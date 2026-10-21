@@ -126,6 +126,8 @@ with "cannot find … in scope".
   `build/LoadLens.app/Contents/MacOS/LoadLens --tool-test analyze_folder '{"target":"logs"}'`.
 - `--preview-window [seconds]` — shows the panel in a normal window for screenshots.
 - `LOADLENS_AI_MOCK=1` — AI replies with canned text, no network or key needed.
+- `LOADLENS_MAX_HEIGHT=<points>` — pretend the screen is only this tall, to check the responsive
+  panel layout (header/footer fixed, middle scrolls, AI pane capped) on a large display.
 - `LOADLENS_SETTINGS_SUITE=<name>` — isolated settings and Keychain entries, so tests never touch the
   user's real configuration. Clean up afterwards (`defaults delete local.loadlens.<name>`).
 

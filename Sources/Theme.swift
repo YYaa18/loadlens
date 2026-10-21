@@ -99,6 +99,7 @@ struct IconButton: View {
     let symbol: String
     let help: String
     var size: CGFloat = 26
+    var tint: Color? = nil
     let action: () -> Void
     @State private var hovering = false
 
@@ -114,7 +115,7 @@ struct IconButton: View {
                 )
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(tint.map(AnyShapeStyle.init) ?? AnyShapeStyle(.secondary))
         .help(help)
         .onHover { hovering = $0 }
     }

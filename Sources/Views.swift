@@ -8,7 +8,8 @@ struct PanelView: View {
     @ObservedObject private var dock = AIDock.shared
     @State private var toast: String?
     @State private var spin = 0.0
-    @State private var mainHeight: CGFloat = 600
+    @State private var heights: [String: CGFloat] = [:]
+    @State private var screenHeight: CGFloat = NSScreen.main?.visibleFrame.height ?? 900
     @AppStorage("panelTab") private var tab = PanelTab.overview
 
     var body: some View {
@@ -23,7 +24,14 @@ struct PanelView: View {
                 aiPane
             }
         }
-        .background(WindowReader { AIDock.shared.attach($0) })
+        .background(WindowReader { window in
+            AIDock.shared.attach(window)
+            updateScreenHeight(window.screen)
+        })
+        .onPreferenceChange(LayoutHeights.self) { heights = $0 }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
+            updateScreenHeight(NSScreen.main)
+        }
         .onAppear { monitor.panelDidOpen() }
         .onDisappear {
             monitor.panelDidClose()
@@ -39,16 +47,74 @@ struct PanelView: View {
                        dock.close()
                        AIChatWindowController.shared.show(anchor: nil, autoAnalyze: false)
                    })
-            .frame(width: AIDock.paneWidth, height: mainHeight)
+            .frame(width: AIDock.paneWidth, height: panelHeight)
             .background(Color.primary.opacity(0.02))
+    }
+
+    // MARK: Responsive height
+    //
+    // The panel never grows past the screen: header and footer stay put, the cards in between
+    // scroll when they don't fit, and the AI pane gets the same (capped) height so its input
+    // box is always on screen.
+
+    /// Usable height below the menu bar on the panel's screen.
+    private var available: CGFloat {
+        var height = screenHeight - 14
+        if let limit = ProcessInfo.processInfo.environment["LOADLENS_MAX_HEIGHT"].flatMap(Double.init) {
+            height = min(height, CGFloat(limit))   // test hook: pretend the screen is smaller
+        }
+        return max(height, 360)
+    }
+
+    /// Small screens (e.g. 13" at 1280×800) get a slightly denser overview.
+    private var compact: Bool { available < 820 }
+
+    private var chromeHeight: CGFloat { (heights["header"] ?? 82) + (heights["footer"] ?? 40) }
+    private var contentHeight: CGFloat { heights["content"] ?? 600 }
+    private var scrollHeight: CGFloat { min(contentHeight, max(available - chromeHeight, 160)) }
+
+    private var panelHeight: CGFloat {
+        let natural = chromeHeight + scrollHeight
+        // With the AI pane open, give the conversation room even when the main content is short.
+        return dock.isOpen ? min(available, max(natural, 560)) : natural
+    }
+
+    private func updateScreenHeight(_ screen: NSScreen?) {
+        guard let height = screen?.visibleFrame.height, abs(height - screenHeight) > 0.5 else { return }
+        screenHeight = height
     }
 
     private var mainPane: some View {
         VStack(spacing: 0) {
-            topBar
-            TabSwitcher(selection: $tab)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 10)
+            VStack(spacing: 0) {
+                topBar
+                TabSwitcher(selection: $tab)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 10)
+            }
+            .reportHeight("header")
+
+            ScrollView(.vertical, showsIndicators: contentHeight > scrollHeight + 1) {
+                pageContent
+                    .reportHeight("content")
+            }
+            .frame(height: scrollHeight)
+
+            Spacer(minLength: 0)
+            VStack(spacing: 0) {
+                Divider().opacity(0.5)
+                footer
+            }
+            .reportHeight("footer")
+        }
+        .frame(width: panelWidth, height: panelHeight)
+        .overlay(alignment: .bottom) { toastView }
+        .onChange(of: monitor.settingsMessage) { message in
+            if let message { showToast(message) }
+        }
+    }
+
+    private var pageContent: some View {
             VStack(spacing: 10) {
                 switch tab {
                 case .overview:
@@ -62,17 +128,7 @@ struct PanelView: View {
             }
             .padding(.horizontal, 12)
             .padding(.bottom, 12)
-            Divider().opacity(0.5)
-            footer
-        }
-        .frame(width: panelWidth)
-        .fixedSize(horizontal: false, vertical: true)
-        .background(GeometryReader { Color.clear.preference(key: HeightKey.self, value: $0.size.height) })
-        .onPreferenceChange(HeightKey.self) { mainHeight = $0 }
-        .overlay(alignment: .bottom) { toastView }
-        .onChange(of: monitor.settingsMessage) { message in
-            if let message { showToast(message) }
-        }
+            .frame(width: panelWidth)
     }
 
     // MARK: Top bar
@@ -83,6 +139,12 @@ struct PanelView: View {
             Text("负载侦探")
                 .font(.system(size: 13, weight: .semibold))
             Spacer()
+            // Always reachable, even when the AI button at the bottom is scrolled out of view.
+            IconButton(symbol: "sparkles",
+                       help: dock.isOpen ? "收起 AI 助手" : "打开 AI 助手",
+                       tint: Brand.orange) {
+                toggleAI()
+            }
             IconButton(symbol: "arrow.clockwise", help: "立即刷新") {
                 withAnimation(.easeInOut(duration: 0.6)) { spin += 360 }
                 monitor.refreshNow()
@@ -167,7 +229,7 @@ struct PanelView: View {
             }
 
             TrendChart(values: monitor.cpuHistory.map(\.cpu), tint: tint)
-                .frame(height: 44)
+                .frame(height: compact ? 30 : 44)
 
             HStack {
                 Text(historySpan)
@@ -287,7 +349,7 @@ struct PanelView: View {
     // MARK: Top apps
 
     private var topAppsCard: some View {
-        let apps = Array(monitor.snapshot.apps.prefix(5))
+        let apps = Array(monitor.snapshot.apps.prefix(compact ? 4 : 5))
         let scale = max(100, apps.first?.cpu ?? 0)
 
         return VStack(alignment: .leading, spacing: 6) {
@@ -422,6 +484,22 @@ struct PanelView: View {
 }
 
 // MARK: - Components
+
+/// Collects the heights of named parts of the panel.
+struct LayoutHeights: PreferenceKey {
+    static var defaultValue: [String: CGFloat] = [:]
+    static func reduce(value: inout [String: CGFloat], nextValue: () -> [String: CGFloat]) {
+        value.merge(nextValue()) { $1 }
+    }
+}
+
+extension View {
+    func reportHeight(_ name: String) -> some View {
+        background(GeometryReader { proxy in
+            Color.clear.preference(key: LayoutHeights.self, value: [name: proxy.size.height])
+        })
+    }
+}
 
 enum PanelTab: String {
     case overview, disk
