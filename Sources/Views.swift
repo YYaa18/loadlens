@@ -144,7 +144,6 @@ struct PanelView: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(tint.opacity(0.18), lineWidth: 0.5)
         )
-        .animation(.easeInOut(duration: 0.4), value: diag.level)
     }
 
     private var heroSummary: String {
@@ -556,14 +555,18 @@ struct LiveDot: View {
     var body: some View {
         ZStack {
             Circle().fill(tint.opacity(0.35))
-                .frame(width: 10, height: 10)
                 .scaleEffect(pulse ? 1 : 0.4)
                 .opacity(pulse ? 0 : 1)
+                // Scoped to this circle only: a repeating animation started from onAppear
+                // with withAnimation would also replay the panel's first layout forever.
+                .animation(.easeOut(duration: 1.6).repeatForever(autoreverses: false), value: pulse)
+                .frame(width: 10, height: 10)
             Circle().fill(tint).frame(width: 6, height: 6)
         }
         .frame(width: 10, height: 10)
         .onAppear {
-            withAnimation(.easeOut(duration: 1.6).repeatForever(autoreverses: false)) { pulse = true }
+            // Start after the first layout pass has settled.
+            DispatchQueue.main.async { pulse = true }
         }
     }
 }

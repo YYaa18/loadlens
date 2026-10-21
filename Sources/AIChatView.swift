@@ -510,7 +510,10 @@ private struct TypingIndicator: View {
                 .foregroundStyle(.secondary)
                 .padding(.leading, 4)
         }
-        .onAppear { phase = true }
+        .onAppear {
+            // Start after layout settles so the repeat doesn't replay the bubble's insertion.
+            DispatchQueue.main.async { phase = true }
+        }
     }
 }
 

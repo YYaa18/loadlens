@@ -230,7 +230,7 @@ final class SystemProcessReader {
             let name: String
             let path: String
             if includeNames, parts.count == 4 {
-                let rawPath = String(parts[3])
+                let rawPath = decodeVisEscapes(String(parts[3]))
                 name = (rawPath as NSString).lastPathComponent
                 path = rawPath
                 cache[pid] = (name, path)
@@ -251,6 +251,30 @@ final class SystemProcessReader {
         }
         return result
     }
+}
+
+/// `ps` prints non-ASCII bytes in vis(3) form ("M-^H", "M-x"); turn them back into UTF-8.
+func decodeVisEscapes(_ text: String) -> String {
+    guard text.contains("M-") else { return text }
+    var bytes: [UInt8] = []
+    let chars = Array(text.utf8)
+    var i = 0
+    while i < chars.count {
+        if chars[i] == UInt8(ascii: "M"), i + 2 < chars.count, chars[i + 1] == UInt8(ascii: "-") {
+            if chars[i + 2] == UInt8(ascii: "^"), i + 3 < chars.count {
+                let c = chars[i + 3]
+                bytes.append(0x80 | (c == UInt8(ascii: "?") ? 0x7F : (c & 0x1F)))
+                i += 4
+            } else {
+                bytes.append(0x80 | chars[i + 2])
+                i += 3
+            }
+        } else {
+            bytes.append(chars[i])
+            i += 1
+        }
+    }
+    return String(decoding: bytes, as: UTF8.self)
 }
 
 /// One-shot full read (names included), used by the terminal report.
