@@ -69,7 +69,7 @@ struct PanelView: View {
     /// Small screens (e.g. 13" at 1280×800) get a slightly denser overview.
     private var compact: Bool { available < 820 }
 
-    private var chromeHeight: CGFloat { (heights["header"] ?? 82) + (heights["footer"] ?? 40) }
+    private var chromeHeight: CGFloat { (heights["header"] ?? 82) + (heights["footer"] ?? 90) }
     private var contentHeight: CGFloat { heights["content"] ?? 600 }
     private var scrollHeight: CGFloat { min(contentHeight, max(available - chromeHeight, 160)) }
 
@@ -102,6 +102,7 @@ struct PanelView: View {
 
             Spacer(minLength: 0)
             VStack(spacing: 0) {
+                aiButton
                 Divider().opacity(0.5)
                 footer
             }
@@ -139,12 +140,6 @@ struct PanelView: View {
             Text("负载侦探")
                 .font(.system(size: 13, weight: .semibold))
             Spacer()
-            // Always reachable, even when the AI button at the bottom is scrolled out of view.
-            IconButton(symbol: "sparkles",
-                       help: dock.isOpen ? "收起 AI 助手" : "打开 AI 助手",
-                       tint: Brand.orange) {
-                toggleAI()
-            }
             IconButton(symbol: "arrow.clockwise", help: "立即刷新") {
                 withAnimation(.easeInOut(duration: 0.6)) { spin += 360 }
                 monitor.refreshNow()
@@ -394,19 +389,6 @@ struct PanelView: View {
                     }
                 }
             }
-
-            Button { toggleAI() } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "sparkles")
-                    Text(dock.isOpen ? "收起 AI 助手" : "让 AI 帮我深入分析")
-                    Spacer(minLength: 0)
-                    Image(systemName: aiArrow)
-                        .font(.system(size: 11, weight: .bold))
-                }
-            }
-            .buttonStyle(GradientButtonStyle())
-            .padding(.top, 2)
-            .help("AI 结合当前实时数据，用大白话解释原因")
         }
         .card()
     }
@@ -470,9 +452,23 @@ struct PanelView: View {
         showToast("诊断报告已复制，可以直接粘贴发给别人")
     }
 
-    private func toggleAI() {
-        dock.toggle()
-        if dock.isOpen { AIChat.shared.startIfEmpty() }
+    /// The one AI entry point: same on every tab, pinned above the footer so it never scrolls away.
+    /// It only opens or closes the assistant; what to ask is up to the user.
+    private var aiButton: some View {
+        Button { dock.toggle() } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                Text(dock.isOpen ? "收起 AI 助手" : "AI 助手")
+                Spacer(minLength: 0)
+                Image(systemName: aiArrow)
+                    .font(.system(size: 11, weight: .bold))
+            }
+        }
+        .buttonStyle(GradientButtonStyle())
+        .padding(.horizontal, 12)
+        .padding(.top, 4)
+        .padding(.bottom, 10)
+        .help(dock.isOpen ? "收起 AI 助手" : "打开 AI 助手，结合实时数据提问")
     }
 
     /// Points toward where the pane opens (or closes back from).

@@ -12,12 +12,27 @@ struct AIChatView: View {
     @FocusState private var inputFocused: Bool
     @State private var showContext = false
 
-    private let starters: [(icon: String, text: String)] = [
-        ("fan", "为什么风扇一直在响？"),
-        ("xmark.app", "现在最该关掉哪个应用？"),
-        ("memorychip", "内存还够用吗？要不要加内存？"),
-        ("internaldrive", "应用缓存里都是哪些应用？能清理吗？")
-    ]
+    /// Which panel page the user is on; the empty state suggests questions for it.
+    @AppStorage("panelTab") private var panelTab = PanelTab.overview
+
+    private var starters: [(icon: String, text: String)] {
+        switch panelTab {
+        case .overview:
+            return [
+                ("fan", "为什么风扇一直在响？"),
+                ("xmark.app", "现在最该关掉哪个应用？"),
+                ("memorychip", "内存还够用吗？要不要加内存？"),
+                ("tortoise", "电脑为什么变卡了？")
+            ]
+        case .disk:
+            return [
+                ("trash", "哪些空间可以放心清理？"),
+                ("archivebox", "应用缓存里都是哪些应用？能清理吗？"),
+                ("arrow.down.circle", "下载文件夹里有哪些大文件？"),
+                ("checkmark.shield", "硬盘健康吗？读写速度正常吗？")
+            ]
+        }
+    }
 
     private let followUps = ["具体该怎么操作？", "还有其他可能的原因吗？", "需要重启电脑吗？"]
 
@@ -37,9 +52,6 @@ struct AIChatView: View {
         .background(embedded ? Color.clear : Color(nsColor: .windowBackgroundColor))
         .ignoresSafeArea(.container, edges: embedded ? [] : .top)
         .onAppear { inputFocused = true }
-        .onChange(of: store.isReady) { ready in
-            if ready { chat.startIfEmpty() }
-        }
     }
 
     // MARK: Header
@@ -248,9 +260,11 @@ struct AIChatView: View {
                 .shadow(color: Brand.coral.opacity(0.3), radius: 10, y: 4)
                 .padding(.top, 18)
             VStack(spacing: 5) {
-                Text("你好，我来帮你看看这台 Mac")
+                Text(panelTab == .disk ? "想了解硬盘的什么？" : "你好，我来帮你看看这台 Mac")
                     .font(.system(size: 16, weight: .semibold))
-                Text("我会结合实时的 CPU、内存、温度和进程数据，用大白话解释原因，给出能马上做的建议。")
+                Text(panelTab == .disk
+                     ? "我能查看磁盘容量、健康状态、读写情况，以及每个文件夹被哪些应用占用，告诉你哪些能放心清理。"
+                     : "我会结合实时的 CPU、内存、温度和进程数据，用大白话解释原因，给出能马上做的建议。")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -258,8 +272,10 @@ struct AIChatView: View {
                     .padding(.horizontal, 12)
             }
 
-            Button { chat.analyzeCurrentState() } label: {
-                Label("一键分析当前状态", systemImage: "sparkles")
+            Button {
+                if panelTab == .disk { chat.analyzeDisk() } else { chat.analyzeCurrentState() }
+            } label: {
+                Label(panelTab == .disk ? "一键分析硬盘空间" : "一键分析当前状态", systemImage: "sparkles")
             }
             .buttonStyle(GradientButtonStyle())
             .frame(maxWidth: 240)
@@ -325,7 +341,8 @@ struct AIChatView: View {
             }
 
             HStack(alignment: .bottom, spacing: 8) {
-                TextField("问点什么，例如：为什么风扇一直响？", text: $chat.input, axis: .vertical)
+                TextField(panelTab == .disk ? "问点什么，例如：哪些文件可以删？" : "问点什么，例如：为什么风扇一直响？",
+                          text: $chat.input, axis: .vertical)
                     .textFieldStyle(.plain)
                     .font(.system(size: 13))
                     .lineLimit(1...5)

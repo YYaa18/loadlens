@@ -281,13 +281,6 @@ struct DiskPageView: View {
                     Text("合计约 \(formatSize(scanner.total))。点 ✨ 让 AI 分析某一项，点文件夹图标在访达中查看")
                         .font(.system(size: 10.5))
                         .foregroundStyle(.tertiary)
-                    Button {
-                        AIDock.shared.ask("请先查看可清理空间总览，再对占用最大的两三项查看明细，告诉我：分别是哪些应用或文件占的、哪些可以放心清理、哪些要谨慎，以及具体怎么清理。按能释放的空间从大到小排列。",
-                                          display: "根据可清理空间给我清理建议")
-                    } label: {
-                        Label("让 AI 给出清理建议", systemImage: "sparkles")
-                    }
-                    .buttonStyle(GradientButtonStyle())
                 }
             }
 

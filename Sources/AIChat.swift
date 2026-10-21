@@ -97,6 +97,11 @@ final class AIChat: ObservableObject {
              display: "帮我看看电脑现在的状态")
     }
 
+    func analyzeDisk() {
+        send("请查看硬盘详情和可清理空间总览，告诉我硬盘现在的情况（容量、健康、读写），以及最值得做的清理：哪些可以放心删、哪些要谨慎、怎么操作，按能释放的空间从大到小排列。",
+             display: "帮我看看硬盘空间")
+    }
+
     func contextPreview() -> String {
         buildContext()
     }
