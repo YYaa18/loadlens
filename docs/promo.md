@@ -23,6 +23,7 @@
 | 用途 | 文件 | 尺寸 |
 | --- | --- | --- |
 | README 横幅 / 头图 | `hero.png` | 1600×900 |
+| GitHub 社交预览 | `social-preview.png` | 1280×640 |
 | 小红书 / 朋友圈方图 | `promo-square.png` | 1080×1080 |
 | 概览页 | `screenshots/overview.png` | 720×1634 |
 | 硬盘页 | `screenshots/disk.png` | 720×1300 |
