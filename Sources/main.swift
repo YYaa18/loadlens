@@ -11,6 +11,16 @@ if CommandLine.arguments.contains("--keychain-test") {
     exit(0)
 }
 
+// Developer check for Keychain access across builds: --keychain-save <account> / --keychain-read <account>
+if let index = CommandLine.arguments.firstIndex(of: "--keychain-save"), CommandLine.arguments.count > index + 1 {
+    print("save:", Keychain.save("loadlens-open-access-test", account: CommandLine.arguments[index + 1]))
+    exit(0)
+}
+if let index = CommandLine.arguments.firstIndex(of: "--keychain-read"), CommandLine.arguments.count > index + 1 {
+    print("read:", Keychain.load(account: CommandLine.arguments[index + 1]) ?? "nil")
+    exit(0)
+}
+
 if CommandLine.arguments.contains("--login-item-on") {
     try? LoginItem.setEnabled(true)
     print("login item enabled: \(LoginItem.isEnabled)")

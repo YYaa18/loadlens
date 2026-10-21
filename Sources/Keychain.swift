@@ -23,8 +23,29 @@ enum Keychain {
 
         var attributes = base
         attributes[kSecValueData as String] = data
-        attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        if let access = openAccess() {
+            attributes[kSecAttrAccess as String] = access
+        }
         return SecItemAdd(attributes as CFDictionary, nil) == errSecSuccess
+    }
+
+    /// Access that lets any app of this user read the item without a prompt (like `security -A`).
+    ///
+    /// Locally built copies have no Apple team ID, so macOS ties Keychain permission to each build's
+    /// hash and asks again after every rebuild. The user chose convenience over that per-build check;
+    /// the trade-off is that other programs running as this user could read the key, much like a
+    /// config file.
+    private static func openAccess() -> SecAccess? {
+        var access: SecAccess?
+        guard SecAccessCreate("负载侦探 API Key" as CFString, [] as CFArray, &access) == errSecSuccess,
+              let access else { return nil }
+        if let acls = SecAccessCopyMatchingACLList(access, kSecACLAuthorizationDecrypt) as? [SecACL] {
+            for acl in acls {
+                // A nil application list means "any application".
+                SecACLSetContents(acl, nil, "负载侦探 API Key" as CFString, SecKeychainPromptSelector())
+            }
+        }
+        return access
     }
 
     static func load(account: String, service: String = service) -> String? {

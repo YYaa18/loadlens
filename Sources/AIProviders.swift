@@ -256,7 +256,18 @@ final class AIConfigStore: ObservableObject {
         if let cached = keyCache[id] { return cached }
         guard config(for: id).hasKey, let loaded = Keychain.load(account: id) else { return nil }
         keyCache[id] = loaded
+        migrateToOpenAccess(id, key: loaded)
         return loaded
+    }
+
+    /// Keys saved by older builds only allow the build that saved them; re-save once with open
+    /// access so later builds can read them without a Keychain prompt.
+    private func migrateToOpenAccess(_ id: String, key: String) {
+        let flag = "keychainOpenAccess.\(id)"
+        guard !defaults.bool(forKey: flag) else { return }
+        if Keychain.save(key, account: id) {
+            defaults.set(true, forKey: flag)
+        }
     }
 
     private func persist() {

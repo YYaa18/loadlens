@@ -37,6 +37,16 @@ xcrun swiftc -O -swift-version 5 \
 
 cp "$ROOT/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
-codesign --force --sign - "$APP" >/dev/null 2>&1
+# Sign with the local certificate when it exists (see tools/setup-signing.sh) so the app keeps
+# the same identity across builds and Keychain "Always Allow" sticks. Otherwise sign ad hoc.
+SIGN_NAME="LoadLens Local Signing"
+if security find-certificate -c "$SIGN_NAME" >/dev/null 2>&1 \
+    && codesign --force --sign "$SIGN_NAME" "$APP" >/dev/null 2>&1; then
+    SIGNED_WITH="$SIGN_NAME"
+else
+    codesign --force --sign - "$APP" >/dev/null 2>&1
+    SIGNED_WITH="ad hoc（运行 tools/setup-signing.sh 可避免每次重新编译后钥匙串重复询问）"
+fi
 
 echo "built: $APP"
+echo "signed: $SIGNED_WITH"
