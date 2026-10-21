@@ -142,3 +142,12 @@ Sources/CLI.swift        终端报告与开发用预览
 Resources/AppIcon.icns   应用图标
 tools/IconGen.swift      图标生成器
 ```
+
+## 许可协议
+
+本项目采用 [PolyForm Noncommercial License 1.0.0](LICENSE.md)。
+
+- ✅ **个人、学习、研究、非营利组织使用**：免费，可以随意下载、修改和分享（分享时请保留 `LICENSE.md`）。
+- 💼 **商业用途**（公司内部使用、集成到收费产品或服务、二次售卖等）：需要另外获得商业授权，请在 GitHub 上[提交 Issue](https://github.com/YYaa18/loadlens/issues) 联系作者。
+
+Copyright © 2026 YYaa18
