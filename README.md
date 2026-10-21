@@ -6,8 +6,13 @@
 
 菜单栏常驻一个 CPU 圆环 + 百分比（点击它打开面板），点开就能看到：
 
-- 状态总览卡片：一句话结论、CPU 大数字、趋势曲线（平均值 / 峰值）
-- 内存、温度、负载三个指标卡（悬停看交换区、压缩内存等细节）
+- 状态总览卡片：一句话结论、CPU 大数字、趋势曲线（平均值 / 峰值 / 负载）
+- 内存、温度、磁盘三个指标卡（悬停看交换区、压缩内存等细节，点磁盘卡进入「硬盘」页）
+- 「硬盘」页：
+  - 启动盘容量（已用 / 可自动清除 / 空闲）、SMART 健康状态、本地 Time Machine 快照数量
+  - 实时读写速度和曲线，以及读写最多的应用
+  - 外接磁盘的容量，一键推出
+  - 「可清理空间」分析：统计下载、废纸篓、应用缓存、日志、Xcode、iOS 模拟器、开发工具缓存、iPhone 备份的大小，可在访达中打开查看；只读大小，不删除任何文件
 - 占用排行（按应用合并，比如 Chrome 的所有渲染进程算一项），悬停可退出应用、在访达中显示
 - 根据当前情况生成的「诊断建议」，以及一键进入 AI 深入分析
 - 右上角齿轮菜单：开机自启、高负载通知、AI 设置、复制诊断报告、退出
@@ -58,8 +63,10 @@ open build/LoadLens.app
 
 ## 它为什么很省资源
 
-- 面板关闭时只读取 CPU / 内存 / 温度这几项总量，每 6 秒一次，实测 CPU 约 0.4%，内存约 35–60 MB。
-- 面板打开时才扫描进程，每 5 秒一次，实测 CPU 约 1%。
+- 面板关闭时每 6 秒采样一次总量和本用户进程，实测 CPU 约 0.2%。
+- 面板打开时每 5 秒一次，额外读取系统进程和每个进程的磁盘读写，实测 CPU 约 0.7%。
+- 「实时」脉冲点用 Core Animation 绘制，不会让界面每帧重绘。
+- 硬盘健康（`diskutil`、`tmutil`）最多 30 分钟读一次；可清理空间只在点击「开始分析」时统计，用和 `du` 相同的 `fts` 遍历，几个位置并行，大目录会显示实时进度。
 - 进程数据来自系统 `libproc` 接口，不启动 `top`，不轮询整个进程树。
 - 系统进程（WindowServer、kernel_task 等）因为普通用户权限读不到，才用 `ps` 兜底：CPU 每 30 秒刷新，进程名每 5 分钟刷新。
 - 不联网、不需要 sudo、不需要辅助功能或屏幕录制权限、不读取文件内容。
@@ -75,6 +82,11 @@ open build/LoadLens.app
 | 温度状态 | `ProcessInfo.thermalState` |
 | 负载 / 运行时间 | `getloadavg` / `sysctl kern.boottime` |
 | 通知 | `UserNotifications`（首次开启时请求授权） |
+| 磁盘容量 | `URLResourceKey.volumeAvailableCapacityForImportantUsage` 等 |
+| 整机读写速度 | IOKit `IOBlockStorageDriver` 的 Statistics |
+| 单进程读写 | `proc_pid_rusage`（仅本用户进程） |
+| 硬盘健康 / 本地快照 | `diskutil info -plist /`、`tmutil listlocalsnapshots /` |
+| 可清理空间 | `fts` 遍历常见目录，只读文件大小 |
 | 开机自启 | `~/Library/LaunchAgents/local.loadlens.agent.plist` |
 | AI 分析 | 用户选择的服务，流式返回（OpenAI 兼容 / Anthropic Messages） |
 
@@ -82,7 +94,9 @@ open build/LoadLens.app
 
 - 没有读取风扇转速和具体温度：需要访问 SMC 或 `sudo powermetrics`，为了保持零权限暂时没做。
 - 系统进程的 CPU 来自 `ps` 的近期平均值，不是严格瞬时值。
-- 没有拆分单个进程的磁盘 I/O 和 GPU 占用。
+- 系统进程（其他用户）的磁盘读写读不到，只能看到整机总量；没有拆分 GPU 占用。
+- 废纸篓、iPhone 备份等目录受系统隐私保护，需要在「系统设置 → 隐私与安全性 → 完全磁盘访问权限」里允许负载侦探才能统计；第一次分析「下载」时系统可能询问访问权限。
+- 应用缓存可能有几十万个小文件，统计一次需要几十秒，这是文件系统本身的速度。
 - 通知需要系统授权；高负载要持续 2 分钟才提醒，30 分钟内最多一次。
 - 趋势曲线只保存在内存里，退出应用后清空。
 - AI 分析需要自备对应服务的 API Key（本地 Ollama 除外），按各家标准计费；对话不落盘。重新编译应用后，首次读取钥匙串可能要求授权。
@@ -104,6 +118,9 @@ swiftc -O -parse-as-library tools/IconGen.swift -o /tmp/icongen
 
 ```
 Sources/Sampler.swift    系统数据采样
+Sources/Disk.swift       磁盘容量、读写速度、健康状态
+Sources/SpaceScanner.swift   可清理空间分析
+Sources/DiskViews.swift  「硬盘」页界面
 Sources/Model.swift      进程合并、应用归组、ps 兜底
 Sources/Diagnoser.swift  诊断规则与建议生成
 Sources/LoginItem.swift  开机自启（LaunchAgent）

@@ -9,6 +9,7 @@ final class Monitor: ObservableObject {
     @Published private(set) var menuTitle = "…"
     @Published private(set) var menuSymbol = "gauge"
     @Published private(set) var cpuHistory: [CPUPoint] = []
+    @Published private(set) var diskHistory: [DiskPoint] = []
     @Published private(set) var settingsMessage: String?
 
     @Published var launchAtLogin = LoginItem.isEnabled {
@@ -48,6 +49,11 @@ final class Monitor: ObservableObject {
     private var timer: Timer?
     private var panelOpen = false
     private var started = false
+    private let diskIO = DiskIOSampler()
+    private var volumes: [VolumeInfo] = []
+    private var volumesDate = Date.distantPast
+    private var diskHealth: DiskHealth?
+    private var healthDate = Date.distantPast
     private var systemCache: [ProcessSample] = []
     private var systemCacheDate = Date.distantPast
     private var systemNamesDate = Date.distantPast
@@ -137,6 +143,7 @@ final class Monitor: ObservableObject {
         lines.append("状态：\(diag.headline)")
         lines.append(diag.detail)
         lines.append("温度：\(diag.thermalLabel) · 已运行 \(Int(snap.uptime / 86_400)) 天")
+        lines.append(contentsOf: diskContextLines(snap.disk, apps: snap.apps))
         lines.append("")
         lines.append("占用最高的应用：")
         for (index, app) in snap.apps.prefix(6).enumerated() {
@@ -176,7 +183,9 @@ final class Monitor: ObservableObject {
         let thermal = readThermalState()
         let uptime = readSystemUptime()
 
-        let userSamples = tracker.scan()
+        let userSamples = tracker.scan(includeDisk: full)
+        let io = diskIO.sample()
+        let disk = readDiskState(full: full, read: io.read, write: io.write)
         var samples = userSamples
         if full {
             let now = Date()
@@ -200,6 +209,7 @@ final class Monitor: ObservableObject {
         snap.thermal = thermal
         snap.uptime = uptime
         snap.apps = apps
+        snap.disk = disk
         snap.cores = ProcessInfo.processInfo.processorCount
         snap.sampledAt = Date()
 
@@ -218,10 +228,37 @@ final class Monitor: ObservableObject {
             }
 
             self.cpuHistory.append(CPUPoint(date: snap.sampledAt, cpu: snap.cpu))
+            self.diskHistory.append(DiskPoint(date: snap.sampledAt, read: disk.readRate, write: disk.writeRate))
+            if self.diskHistory.count > 160 {
+                self.diskHistory.removeFirst(self.diskHistory.count - 160)
+            }
             if self.cpuHistory.count > 160 {
                 self.cpuHistory.removeFirst(self.cpuHistory.count - 160)
             }
             self.evaluateAlert(diagnosis: diag, snapshot: snap)
+        }
+    }
+
+    /// Volumes are cheap but change rarely; health needs two command-line tools, so it is read
+    /// at most every 30 minutes and only while the panel is open (or on first use).
+    private func readDiskState(full: Bool, read: Double, write: Double) -> DiskSnapshot {
+        let now = Date()
+        if now.timeIntervalSince(volumesDate) > (full ? 15 : 120) {
+            volumes = readVolumes()
+            volumesDate = now
+        }
+        if (full || diskHealth == nil), now.timeIntervalSince(healthDate) > 1_800 {
+            diskHealth = readDiskHealth()
+            healthDate = now
+        }
+        return DiskSnapshot(volumes: volumes, readRate: read, writeRate: write, health: diskHealth)
+    }
+
+    /// Re-read volumes right away, e.g. after ejecting a disk.
+    func refreshVolumes() {
+        queue.async { [weak self] in
+            self?.volumesDate = .distantPast
+            self?.capture(full: true)
         }
     }
 

@@ -234,6 +234,7 @@ final class AIChat: ObservableObject {
                             snap.cpu, snap.load1, snap.load5, snap.load15, snap.cores))
         lines.append("内存：\(formatGB(snap.memory.usedBytes)) / \(formatGB(snap.memory.totalBytes)) GB；交换区 \(formatGB(snap.memory.swapUsedBytes)) GB；压缩内存 \(formatGB(snap.memory.compressedBytes)) GB")
         lines.append("温度状态：\(diag.thermalLabel)；已连续运行 \(Int(snap.uptime / 86_400)) 天")
+        lines.append(contentsOf: diskContextLines(snap.disk, apps: snap.apps))
         lines.append("占用最高的应用：")
         for app in snap.apps.prefix(6) {
             var line = "- \(app.name)：\(Int(app.cpu.rounded()))%"

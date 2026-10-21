@@ -9,6 +9,10 @@ struct AppUsage: Identifiable {
     let busiestProcess: String
     let bundlePath: String?
     let isSystem: Bool
+    var diskRead: Double = 0
+    var diskWrite: Double = 0
+
+    var diskTotal: Double { diskRead + diskWrite }
 
     var hint: String? {
         let lowered = busiestProcess.lowercased()
@@ -38,6 +42,7 @@ struct Snapshot {
     var thermal: ProcessInfo.ThermalState = .nominal
     var uptime: TimeInterval = 0
     var apps: [AppUsage] = []
+    var disk = DiskSnapshot()
     var sampledAt = Date()
 }
 
@@ -136,6 +141,8 @@ func aggregate(_ samples: [ProcessSample], excluding: Set<pid_t>) -> [AppUsage] 
         var busiestCPU: Double = 0
         var bundlePath: String?
         var isSystem: Bool
+        var diskRead: Double = 0
+        var diskWrite: Double = 0
     }
 
     var buckets: [String: Bucket] = [:]
@@ -169,6 +176,8 @@ func aggregate(_ samples: [ProcessSample], excluding: Set<pid_t>) -> [AppUsage] 
                                             isSystem: isSystem)
         bucket.cpu += sample.cpu
         bucket.rss += sample.rss
+        bucket.diskRead += sample.diskRead
+        bucket.diskWrite += sample.diskWrite
         bucket.count += 1
         if sample.cpu > bucket.busiestCPU {
             bucket.busiestCPU = sample.cpu
@@ -186,7 +195,9 @@ func aggregate(_ samples: [ProcessSample], excluding: Set<pid_t>) -> [AppUsage] 
                  processCount: bucket.count,
                  busiestProcess: bucket.busiestProcess,
                  bundlePath: bucket.bundlePath,
-                 isSystem: bucket.isSystem)
+                 isSystem: bucket.isSystem,
+                 diskRead: bucket.diskRead,
+                 diskWrite: bucket.diskWrite)
     }
     .sorted { $0.cpu > $1.cpu }
 }

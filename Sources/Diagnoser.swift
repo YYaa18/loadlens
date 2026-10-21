@@ -13,6 +13,7 @@ struct Diagnosis {
     var advice: [String]
     var memoryLabel: String
     var thermalLabel: String
+    var diskLabel: String = "—"
 
     static let initial = Diagnosis(level: .calm,
                                    headline: "正在采样…",
@@ -89,6 +90,13 @@ enum Diagnoser {
         var advice: [String] = []
         let top = snapshot.apps.first
 
+        // 0. 硬盘：健康异常最优先
+        let disk = snapshot.disk
+        let diskLabel = Self.diskLabel(disk)
+        if disk.health?.isFailing == true {
+            advice.append("启动盘的 SMART 自检报告异常，硬盘可能快坏了。请马上用 Time Machine 或拷贝的方式备份重要文件，然后联系 Apple 售后检测。")
+        }
+
         // 1. 温度相关
         if snapshot.thermal == .serious || snapshot.thermal == .critical {
             advice.append("温度已经很高，系统在主动限制性能。先关掉下面占用最高的应用，等几分钟再继续，别把机器放在被子或软面上。")
@@ -127,6 +135,21 @@ enum Diagnoser {
             advice.append("Spotlight 正在给硬盘建立索引，通常会自己跑完；如果长期占用很高，可以在系统设置 → Spotlight 里排除大的文件夹。")
         }
 
+        // 6.5 硬盘空间与读写
+        if let root = disk.root {
+            let availableGB = Double(root.availableBytes) / 1_000_000_000
+            if root.freeRatio < 0.08 || availableGB < 12 {
+                advice.append(String(format: "启动盘只剩约 %.0f GB 可用。空间太少会让系统没地方放交换文件，导致卡顿、更新失败。到「硬盘」页看看哪些地方可以清理。", availableGB))
+            } else if (root.freeRatio < 0.15 || availableGB < 30) && swapGB >= 1 {
+                advice.append(String(format: "启动盘可用约 %.0f GB，同时在用交换区。建议清理出更多空间，避免内存不够时变卡。", availableGB))
+            }
+        }
+        let ioTotal = disk.readRate + disk.writeRate
+        if ioTotal >= 80 * 1_048_576,
+           let heavy = snapshot.apps.max(by: { $0.diskTotal < $1.diskTotal }), heavy.diskTotal >= 20 * 1_048_576 {
+            advice.append("\(heavy.name) 正在大量读写硬盘（约 \(formatRate(heavy.diskTotal))），可能在下载、同步或索引。这时候其他应用打开文件会变慢，等它完成即可。")
+        }
+
         // 7. 长期未重启
         let days = Int(snapshot.uptime / 86_400)
         if days >= 21 && swapGB >= 1 {
@@ -147,7 +170,17 @@ enum Diagnoser {
                          detail: detail,
                          advice: Array(advice.prefix(4)),
                          memoryLabel: memoryLabel,
-                         thermalLabel: thermalLabel)
+                         thermalLabel: thermalLabel,
+                         diskLabel: diskLabel)
+    }
+
+    static func diskLabel(_ disk: DiskSnapshot) -> String {
+        if disk.health?.isFailing == true { return "异常" }
+        guard let root = disk.root else { return "—" }
+        let availableGB = Double(root.availableBytes) / 1_000_000_000
+        if root.freeRatio < 0.08 || availableGB < 12 { return "紧张" }
+        if root.freeRatio < 0.15 || availableGB < 30 { return "偏紧" }
+        return "充足"
     }
 
     private static func adviceForTopApp(_ app: AppUsage) -> String {

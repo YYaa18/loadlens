@@ -23,7 +23,14 @@ func runDiagnosticReport() {
     snap.cores = ProcessInfo.processInfo.processorCount
     snap.sampledAt = Date()
 
-    let userSamples = tracker.scan()
+    let diskIO = DiskIOSampler()
+    _ = diskIO.sample()
+    _ = tracker.scan(includeDisk: true)
+    Thread.sleep(forTimeInterval: 1.0)
+    let io = diskIO.sample()
+    snap.disk = DiskSnapshot(volumes: readVolumes(), readRate: io.read, writeRate: io.write, health: readDiskHealth())
+
+    let userSamples = tracker.scan(includeDisk: true)
     let systemSamples = readSystemProcesses()
     let merged = mergeSamples(primary: userSamples, secondary: systemSamples)
     snap.apps = aggregate(merged, excluding: [getpid()])
@@ -35,7 +42,10 @@ func runDiagnosticReport() {
     print(String(repeating: "─", count: 38))
     print("状态：\(diag.headline)")
     print(diag.detail)
-    print("温度：\(diag.thermalLabel)　内存压力：\(diag.memoryLabel)")
+    print("温度：\(diag.thermalLabel)　内存压力：\(diag.memoryLabel)　硬盘：\(diag.diskLabel)")
+    for line in diskContextLines(snap.disk, apps: snap.apps) {
+        print(line)
+    }
     print(String(repeating: "─", count: 38))
     print("占用最高的应用：")
     for (index, app) in snap.apps.prefix(6).enumerated() {

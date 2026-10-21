@@ -15,6 +15,9 @@ struct ProcessSample {
     let path: String
     let cpu: Double
     let rss: UInt64
+    /// Bytes per second; only filled when disk I/O is sampled.
+    var diskRead: Double = 0
+    var diskWrite: Double = 0
 }
 
 /// Overall CPU load, derived from host_processor_info tick deltas.
@@ -123,13 +126,18 @@ final class ProcessTracker {
 
     private var metaCache: [pid_t: Meta] = [:]
     private var previousTimes: [pid_t: UInt64] = [:]
+    private var previousIO: [pid_t: (read: UInt64, write: UInt64)] = [:]
+    private var previousIODate: Date?
     private var previousDate: Date?
 
-    func scan() -> [ProcessSample] {
+    /// - Parameter includeDisk: also read per-process disk I/O (one extra syscall per process).
+    func scan(includeDisk: Bool = false) -> [ProcessSample] {
         let now = Date()
         let elapsed = previousDate.map { max(now.timeIntervalSince($0), 0.05) }
         let pids = Self.allPIDs()
         var currentTimes = [pid_t: UInt64](minimumCapacity: pids.count)
+        var currentIO = [pid_t: (read: UInt64, write: UInt64)]()
+        let ioElapsed = previousIODate.map { max(now.timeIntervalSince($0), 0.05) }
         var samples = [ProcessSample]()
         samples.reserveCapacity(pids.count)
 
@@ -158,15 +166,30 @@ final class ProcessTracker {
                 cpu = Double(totalTime &- previous) / 1_000_000_000.0 / elapsed * 100.0
             }
 
-            samples.append(ProcessSample(pid: pid,
-                                         name: meta.name,
-                                         path: meta.path,
-                                         cpu: max(0, min(cpu, 1600)),
-                                         rss: info.pti_resident_size))
+            var sample = ProcessSample(pid: pid,
+                                       name: meta.name,
+                                       path: meta.path,
+                                       cpu: max(0, min(cpu, 1600)),
+                                       rss: info.pti_resident_size)
+            if includeDisk, let io = readProcessDiskIO(pid) {
+                currentIO[pid] = io
+                if let ioElapsed, let previous = previousIO[pid] {
+                    sample.diskRead = io.read >= previous.read ? Double(io.read - previous.read) / ioElapsed : 0
+                    sample.diskWrite = io.write >= previous.write ? Double(io.write - previous.write) / ioElapsed : 0
+                }
+            }
+            samples.append(sample)
         }
 
         previousTimes = currentTimes
         previousDate = now
+        if includeDisk {
+            previousIO = currentIO
+            previousIODate = now
+        } else {
+            previousIO = [:]
+            previousIODate = nil
+        }
 
         if metaCache.count > max(pids.count * 2, 2048) {
             let alive = Set(pids)

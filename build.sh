@@ -10,6 +10,8 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 xcrun swiftc -O -swift-version 5 \
     "$ROOT/Sources/Sampler.swift" \
+    "$ROOT/Sources/Disk.swift" \
+    "$ROOT/Sources/SpaceScanner.swift" \
     "$ROOT/Sources/Model.swift" \
     "$ROOT/Sources/Diagnoser.swift" \
     "$ROOT/Sources/LoginItem.swift" \
@@ -26,6 +28,7 @@ xcrun swiftc -O -swift-version 5 \
     "$ROOT/Sources/AIDock.swift" \
     "$ROOT/Sources/Monitor.swift" \
     "$ROOT/Sources/Views.swift" \
+    "$ROOT/Sources/DiskViews.swift" \
     "$ROOT/Sources/App.swift" \
     "$ROOT/Sources/CLI.swift" \
     "$ROOT/Sources/main.swift" \

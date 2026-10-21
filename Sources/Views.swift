@@ -9,6 +9,7 @@ struct PanelView: View {
     @State private var toast: String?
     @State private var spin = 0.0
     @State private var mainHeight: CGFloat = 600
+    @AppStorage("panelTab") private var tab = PanelTab.overview
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
@@ -45,11 +46,19 @@ struct PanelView: View {
     private var mainPane: some View {
         VStack(spacing: 0) {
             topBar
+            TabSwitcher(selection: $tab)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 10)
             VStack(spacing: 10) {
-                heroCard
-                metricTiles
-                topAppsCard
-                adviceCard
+                switch tab {
+                case .overview:
+                    heroCard
+                    metricTiles
+                    topAppsCard
+                    adviceCard
+                case .disk:
+                    DiskPageView(monitor: monitor)
+                }
             }
             .padding(.horizontal, 12)
             .padding(.bottom, 12)
@@ -207,7 +216,7 @@ struct PanelView: View {
         guard !values.isEmpty else { return "" }
         let avg = values.reduce(0, +) / Double(values.count)
         let peak = values.max() ?? 0
-        return String(format: "平均 %.0f%% · 峰值 %.0f%%", avg, peak)
+        return String(format: "平均 %.0f%% · 峰值 %.0f%% · 负载 %.1f", avg, peak, monitor.snapshot.load1)
     }
 
     // MARK: Metric tiles
@@ -226,10 +235,6 @@ struct PanelView: View {
             default: return LoadLevel.hot.tint
             }
         }()
-        let cores = max(snap.cores, 1)
-        let loadRatio = min(snap.load1 / Double(cores), 1)
-        let days = Int(snap.uptime / 86_400)
-
         return HStack(spacing: 8) {
             MetricTile(symbol: "memorychip",
                        title: "内存",
@@ -247,13 +252,27 @@ struct PanelView: View {
                        tint: thermalTint)
                 .help("来自系统温度状态，不是具体度数")
 
-            MetricTile(symbol: "gauge.with.dots.needle.50percent",
-                       title: "负载",
-                       value: String(format: "%.1f", snap.load1),
-                       caption: "\(cores) 核 · 已运行 \(days) 天",
-                       progress: loadRatio,
-                       tint: loadRatio >= 0.9 ? LoadLevel.busy.tint : Color.accentColor)
-                .help(String(format: "1 / 5 / 15 分钟负载：%.1f / %.1f / %.1f", snap.load1, snap.load5, snap.load15))
+            diskTile
+        }
+    }
+
+    @ViewBuilder
+    private var diskTile: some View {
+        let label = monitor.diagnosis.diskLabel
+        if let root = monitor.snapshot.disk.root {
+            Button { tab = .disk } label: {
+                MetricTile(symbol: "internaldrive",
+                           title: "磁盘",
+                           value: formatSize(root.availableBytes),
+                           caption: "可用 · 共 \(formatSize(root.totalBytes))",
+                           progress: root.usedRatio,
+                           tint: diskTint(label))
+            }
+            .buttonStyle(.plain)
+            .help("启动盘空间\(label)，点击查看硬盘详情")
+        } else {
+            MetricTile(symbol: "internaldrive", title: "磁盘", value: "—",
+                       caption: "读取中", progress: nil, tint: .secondary)
         }
     }
 
@@ -403,6 +422,50 @@ struct PanelView: View {
 }
 
 // MARK: - Components
+
+enum PanelTab: String {
+    case overview, disk
+}
+
+struct TabSwitcher: View {
+    @Binding var selection: PanelTab
+    @Namespace private var namespace
+
+    var body: some View {
+        HStack(spacing: 2) {
+            item(.overview, "概览", "gauge.with.dots.needle.33percent")
+            item(.disk, "硬盘", "internaldrive")
+        }
+        .padding(2)
+        .background(Capsule().fill(Color.primary.opacity(0.06)))
+    }
+
+    private func item(_ tab: PanelTab, _ title: String, _ symbol: String) -> some View {
+        let selected = selection == tab
+        return Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { selection = tab }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: symbol)
+                Text(title)
+            }
+            .font(.system(size: 11.5, weight: selected ? .semibold : .regular))
+            .foregroundStyle(selected ? .primary : .secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 5)
+            .background {
+                if selected {
+                    Capsule()
+                        .fill(Color(nsColor: .controlBackgroundColor))
+                        .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
+                        .matchedGeometryEffect(id: "tab", in: namespace)
+                }
+            }
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+}
 
 struct MetricTile: View {
     let symbol: String
@@ -579,26 +642,77 @@ struct FooterButton: View {
     }
 }
 
+/// Pulsing "live" dot. The pulse runs as a Core Animation layer animation, so it costs the app
+/// nothing per frame (a SwiftUI repeating animation re-renders the whole panel ~60 times a second).
 struct LiveDot: View {
     let tint: Color
-    @State private var pulse = false
 
     var body: some View {
-        ZStack {
-            Circle().fill(tint.opacity(0.35))
-                .scaleEffect(pulse ? 1 : 0.4)
-                .opacity(pulse ? 0 : 1)
-                // Scoped to this circle only: a repeating animation started from onAppear
-                // with withAnimation would also replay the panel's first layout forever.
-                .animation(.easeOut(duration: 1.6).repeatForever(autoreverses: false), value: pulse)
-                .frame(width: 10, height: 10)
-            Circle().fill(tint).frame(width: 6, height: 6)
-        }
-        .frame(width: 10, height: 10)
-        .onAppear {
-            // Start after the first layout pass has settled.
-            DispatchQueue.main.async { pulse = true }
-        }
+        PulseDot(color: NSColor(tint))
+            .frame(width: 10, height: 10)
+    }
+}
+
+private struct PulseDot: NSViewRepresentable {
+    let color: NSColor
+
+    func makeNSView(context: Context) -> PulseDotView { PulseDotView() }
+
+    func updateNSView(_ view: PulseDotView, context: Context) {
+        view.setColor(color)
+    }
+}
+
+final class PulseDotView: NSView {
+    private let ring = CALayer()
+    private let dot = CALayer()
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layer?.addSublayer(ring)
+        layer?.addSublayer(dot)
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    override func layout() {
+        super.layout()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        ring.frame = bounds
+        ring.cornerRadius = bounds.width / 2
+        dot.frame = bounds.insetBy(dx: 2, dy: 2)
+        dot.cornerRadius = dot.frame.width / 2
+        CATransaction.commit()
+    }
+
+    func setColor(_ color: NSColor) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        ring.backgroundColor = color.withAlphaComponent(0.35).cgColor
+        dot.backgroundColor = color.cgColor
+        CATransaction.commit()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        ring.removeAllAnimations()
+        guard window != nil else { return }
+
+        let scale = CABasicAnimation(keyPath: "transform.scale")
+        scale.fromValue = 0.4
+        scale.toValue = 1.0
+        let fade = CABasicAnimation(keyPath: "opacity")
+        fade.fromValue = 1.0
+        fade.toValue = 0.0
+        let group = CAAnimationGroup()
+        group.animations = [scale, fade]
+        group.duration = 1.6
+        group.repeatCount = .infinity
+        group.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        group.isRemovedOnCompletion = false
+        ring.add(group, forKey: "pulse")
     }
 }
 

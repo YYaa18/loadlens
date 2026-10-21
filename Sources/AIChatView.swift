@@ -16,7 +16,7 @@ struct AIChatView: View {
         ("fan", "为什么风扇一直在响？"),
         ("xmark.app", "现在最该关掉哪个应用？"),
         ("memorychip", "内存还够用吗？要不要加内存？"),
-        ("battery.75", "怎么让电池更耐用？")
+        ("internaldrive", "硬盘空间怎么清理？")
     ]
 
     private let followUps = ["具体该怎么操作？", "还有其他可能的原因吗？", "需要重启电脑吗？"]
@@ -567,9 +567,10 @@ private struct TypingIndicator: View {
                     .frame(width: 6, height: 6)
                     .opacity(phase ? 1 : 0.25)
                     .scaleEffect(phase ? 1 : 0.7)
-                    .animation(.easeInOut(duration: 0.55)
-                                .repeatForever(autoreverses: true)
-                                .delay(Double(index) * 0.18),
+                    .animation(phase ? .easeInOut(duration: 0.55)
+                                        .repeatForever(autoreverses: true)
+                                        .delay(Double(index) * 0.18)
+                                     : .linear(duration: 0),
                                value: phase)
             }
             Text("正在结合实时数据分析…")
@@ -581,6 +582,7 @@ private struct TypingIndicator: View {
             // Start after layout settles so the repeat doesn't replay the bubble's insertion.
             DispatchQueue.main.async { phase = true }
         }
+        .onDisappear { phase = false }
     }
 }
 
