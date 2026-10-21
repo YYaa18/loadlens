@@ -529,6 +529,16 @@ struct AppRow: View {
                     Text(app.name)
                         .font(.system(size: 12.5, weight: .medium))
                         .lineLimit(1)
+                    if app.cpu >= 100 {
+                        // Over 100% = more than one core busy; say it in cores so it doesn't look broken.
+                        Text("≈\(coresText) 核")
+                            .font(.system(size: 10, weight: .semibold, design: .rounded))
+                            .foregroundStyle(usageColor(app.cpu))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(usageColor(app.cpu).opacity(0.14)))
+                            .fixedSize()
+                    }
                     if !app.subtitle.isEmpty {
                         Text(app.subtitle)
                             .font(.system(size: 10.5))
@@ -567,7 +577,27 @@ struct AppRow: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .contextMenu { menuItems }
-        .help(app.isSystem ? "系统服务：\(app.busiestProcess)" : "进程：\(app.busiestProcess)")
+        .help(cpuHelp)
+    }
+
+    private var coresText: String {
+        String(format: "%.1f", app.cpu / 100)
+    }
+
+    /// Explains the per-core percentage and how much of the whole machine it is.
+    private var cpuHelp: String {
+        let cores = max(monitor.snapshot.cores, 1)
+        let machine = app.cpu / Double(cores)
+        let machineText = machine >= 1 ? String(format: "%.0f%%", machine) : "不到 1%"
+        var lines: [String] = []
+        if app.cpu >= 100 {
+            lines.append("CPU \(Int(app.cpu.rounded()))%：约 \(coresText) 个核心，约占整机 \(machineText)（共 \(cores) 核）")
+            lines.append("100% 表示占满一个核心，多线程应用可以超过 100%，和「活动监视器」的算法一致")
+        } else {
+            lines.append("CPU \(Int(app.cpu.rounded()))%：约占整机 \(machineText)（共 \(cores) 核）")
+        }
+        lines.append(app.isSystem ? "系统服务：\(app.busiestProcess)" : "进程：\(app.busiestProcess)")
+        return lines.joined(separator: "\n")
     }
 
     @ViewBuilder

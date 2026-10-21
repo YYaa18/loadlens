@@ -163,7 +163,8 @@ final class ProcessTracker {
 
             var cpu: Double = 0
             if let elapsed, let previous = previousTimes[pid] {
-                cpu = Double(totalTime &- previous) / 1_000_000_000.0 / elapsed * 100.0
+                let nanoseconds = Double(totalTime &- previous) * Self.ticksToNanoseconds
+                cpu = nanoseconds / 1_000_000_000.0 / elapsed * 100.0
             }
 
             var sample = ProcessSample(pid: pid,
@@ -197,6 +198,15 @@ final class ProcessTracker {
         }
         return samples
     }
+
+    /// proc_pidinfo reports CPU time in Mach absolute-time ticks, not nanoseconds.
+    /// On Intel a tick is 1 ns; on Apple silicon it is 125/3 ≈ 41.7 ns, so skipping this
+    /// conversion under-reports app CPU about 24 times.
+    static let ticksToNanoseconds: Double = {
+        var info = mach_timebase_info_data_t()
+        guard mach_timebase_info(&info) == KERN_SUCCESS, info.denom != 0 else { return 1 }
+        return Double(info.numer) / Double(info.denom)
+    }()
 
     static func allPIDs() -> [pid_t] {
         let count = proc_listallpids(nil, 0)
