@@ -3,138 +3,172 @@ import AppKit
 
 struct AIChatView: View {
     @ObservedObject var chat: AIChat
+    @ObservedObject private var monitor = Monitor.shared
+    @FocusState private var inputFocused: Bool
+    @State private var showContext = false
+
+    private let starters: [(icon: String, text: String)] = [
+        ("fan", "为什么风扇一直在响？"),
+        ("xmark.app", "现在最该关掉哪个应用？"),
+        ("memorychip", "内存还够用吗？要不要加内存？"),
+        ("battery.75", "怎么让电池更耐用？")
+    ]
+
+    private let followUps = ["具体该怎么操作？", "还有其他可能的原因吗？", "需要重启电脑吗？"]
 
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
+            Divider().opacity(0.6)
             if chat.settingsOpen {
-                keySetup
+                KeySetupView(chat: chat)
             } else {
+                contextStrip
                 conversation
-                Divider()
-                inputBar
+                composer
             }
         }
-        .frame(minWidth: 440, minHeight: 540)
+        .frame(minWidth: 380, minHeight: 460)
         .background(Color(nsColor: .windowBackgroundColor))
-        .onAppear { chat.refreshKeyState() }
+        .ignoresSafeArea(.container, edges: .top)
+        .onAppear {
+            chat.refreshKeyState()
+            inputFocused = true
+        }
     }
+
+    // MARK: Header
 
     private var header: some View {
-        HStack(spacing: 10) {
-            ZStack {
-                Circle().fill(Color.accentColor.opacity(0.14)).frame(width: 30, height: 30)
-                Image(systemName: "sparkles")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.tint)
-            }
+        HStack(spacing: 9) {
+            AIAvatar(size: 26)
             VStack(alignment: .leading, spacing: 1) {
-                Text("AI 分析").font(.system(size: 14, weight: .semibold))
-                Text("DeepSeek · 只发送诊断摘要")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
+                Text("AI 诊断助手")
+                    .font(.system(size: 13, weight: .semibold))
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(chat.hasKey ? LoadLevel.calm.tint : Color.secondary)
+                        .frame(width: 6, height: 6)
+                    Text(chat.hasKey ? "DeepSeek · 已连接" : "DeepSeek · 未配置")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                }
             }
             Spacer()
-            if !chat.messages.isEmpty {
-                Button("清空") { chat.clear() }
-                    .buttonStyle(.borderless)
-                    .font(.system(size: 10.5))
-                    .foregroundStyle(.secondary)
+            if !chat.settingsOpen {
+                IconButton(symbol: "square.and.pencil", help: "新对话") { chat.clear() }
+                    .disabled(chat.messages.isEmpty && !chat.isStreaming)
+                    .opacity(chat.messages.isEmpty ? 0.4 : 1)
             }
-            Button { chat.settingsOpen.toggle() } label: {
-                Image(systemName: "gearshape")
+            IconButton(symbol: chat.settingsOpen ? "bubble.left.and.bubble.right" : "key",
+                       help: chat.settingsOpen ? "返回对话" : "API Key 设置") {
+                if chat.settingsOpen {
+                    if chat.hasKey { chat.settingsOpen = false }
+                } else {
+                    chat.settingsOpen = true
+                }
             }
-            .buttonStyle(.borderless)
-            .help("API Key 设置")
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.leading, 90)   // clear the traffic lights
+        .padding(.trailing, 12)
+        .frame(height: 52)
     }
 
-    private var keySetup: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 7) {
-                Image(systemName: "key.fill").foregroundStyle(.tint)
-                Text(chat.hasKey ? "更换 DeepSeek API Key" : "配置 DeepSeek API Key")
-                    .font(.system(size: 13, weight: .semibold))
-            }
-            Text("Key 只保存在本机系统钥匙串，不会写入配置文件，也不会上传。")
+    // MARK: Context strip
+
+    private var contextStrip: some View {
+        let snap = monitor.snapshot
+        let diag = monitor.diagnosis
+        return HStack(spacing: 6) {
+            Image(systemName: "eye")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Text("AI 能看到")
                 .font(.system(size: 10.5))
                 .foregroundStyle(.secondary)
-
-            SecureField("sk-...", text: $chat.keyDraft)
-                .textFieldStyle(.roundedBorder)
-                .onSubmit { chat.saveKey() }
-
-            HStack(spacing: 8) {
-                Button("保存") { chat.saveKey() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                Button("获取 API Key") {
-                    if let url = URL(string: "https://platform.deepseek.com/api_keys") {
-                        NSWorkspace.shared.open(url)
-                    }
-                }
-                .controlSize(.small)
-                Spacer()
-                if chat.hasKey {
-                    Button("删除已保存的 Key", role: .destructive) { chat.removeKey() }
-                        .controlSize(.small)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 5) {
+                    contextChip("CPU \(Int(snap.cpu.rounded()))%", tint: diag.level.tint)
+                    contextChip("内存 \(formatGB(snap.memory.usedBytes))/\(formatGB(snap.memory.totalBytes)) GB", tint: nil)
+                    contextChip("温度 \(diag.thermalLabel)", tint: nil)
                 }
             }
-
-            if let note = chat.keyNote {
-                Text(note)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-            }
-            if chat.hasKey {
-                Button("返回对话") { chat.settingsOpen = false }
-                    .controlSize(.small)
-            }
-
-            Spacer()
-
-            Text("分析时会把 CPU、内存、温度、进程名和本机建议发送到 api.deepseek.com，不发送文件内容。")
-                .font(.system(size: 9.5))
-                .foregroundStyle(.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
+            Button("详情") { showContext.toggle() }
+                .buttonStyle(.plain)
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundStyle(.tint)
+                .popover(isPresented: $showContext, arrowEdge: .bottom) {
+                    contextPopover
+                }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+        .background(Color.primary.opacity(0.025))
+        .overlay(alignment: .bottom) { Divider().opacity(0.5) }
     }
+
+    private func contextChip(_ text: String, tint: Color?) -> some View {
+        Text(text)
+            .font(.system(size: 10.5, weight: .medium))
+            .foregroundStyle(tint ?? .primary.opacity(0.75))
+            .lineLimit(1)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2.5)
+            .background(Capsule().fill((tint ?? .primary).opacity(0.08)))
+    }
+
+    private var contextPopover: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("每次提问会附带这份实时快照", systemImage: "lock.shield")
+                .font(.system(size: 12, weight: .semibold))
+            Text("只包含系统指标和应用名，不包含任何文件内容。发送到 api.deepseek.com。")
+                .font(.system(size: 10.5))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            ScrollView {
+                Text(chat.contextPreview())
+                    .font(.system(size: 10.5, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+            }
+            .frame(height: 200)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
+        }
+        .padding(14)
+        .frame(width: 340)
+    }
+
+    // MARK: Conversation
 
     private var conversation: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 18) {
                     if chat.messages.isEmpty {
                         emptyState
                     } else {
                         ForEach(chat.messages) { message in
-                            bubble(message)
+                            messageView(message)
+                                .id(message.id)
+                        }
+                        if !chat.isStreaming, chat.errorMessage == nil,
+                           chat.messages.last?.role == .assistant {
+                            followUpChips
                         }
                     }
-
-                    if chat.isStreaming {
-                        HStack(spacing: 6) {
-                            ProgressView().controlSize(.small)
-                            Text("DeepSeek 正在分析…")
-                                .font(.system(size: 10))
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.top, 2)
-                    }
-
                     Color.clear.frame(height: 1).id("bottom")
                 }
-                .padding(14)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 16)
             }
             .onChange(of: chat.messages.count) { _ in
-                proxy.scrollTo("bottom", anchor: .bottom)
+                withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
             }
             .onChange(of: chat.messages.last?.text) { _ in
+                proxy.scrollTo("bottom", anchor: .bottom)
+            }
+            .onChange(of: chat.isStreaming) { _ in
                 proxy.scrollTo("bottom", anchor: .bottom)
             }
         }
@@ -142,123 +176,500 @@ struct AIChatView: View {
     }
 
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("结合当前 CPU、内存、温度和进程数据，让 DeepSeek 用大白话解释，并回答你的问题。")
-                .font(.system(size: 12))
-                .fixedSize(horizontal: false, vertical: true)
+        VStack(spacing: 16) {
+            AIAvatar(size: 46)
+                .shadow(color: Brand.coral.opacity(0.3), radius: 10, y: 4)
+                .padding(.top, 18)
+            VStack(spacing: 5) {
+                Text("你好，我来帮你看看这台 Mac")
+                    .font(.system(size: 16, weight: .semibold))
+                Text("我会结合实时的 CPU、内存、温度和进程数据，用大白话解释原因，给出能马上做的建议。")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 12)
+            }
 
             Button { chat.analyzeCurrentState() } label: {
-                Label("分析当前状态", systemImage: "sparkles")
-                    .font(.system(size: 12, weight: .medium))
+                Label("一键分析当前状态", systemImage: "sparkles")
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(GradientButtonStyle())
+            .frame(maxWidth: 240)
+            .disabled(chat.isStreaming)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("也可以直接问：")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                suggestion("为什么风扇一直在响？")
-                suggestion("现在最该关掉哪个应用？")
-                suggestion("内存还够用吗？")
+                Text("或者直接问")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                    .padding(.leading, 2)
+                ForEach(starters, id: \.text) { starter in
+                    StarterRow(icon: starter.icon, text: starter.text) { chat.send(starter.text) }
+                        .disabled(chat.isStreaming)
+                }
             }
-
-            privacyDisclosure
+            .padding(.top, 4)
         }
-        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity)
     }
 
-    private func suggestion(_ text: String) -> some View {
-        Button { chat.send(text) } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "arrow.up.right")
-                Text(text)
-            }
-            .font(.system(size: 11))
-        }
-        .buttonStyle(.borderless)
-        .foregroundStyle(.tint)
-        .disabled(chat.isStreaming)
-    }
-
-    private var privacyDisclosure: some View {
-        DisclosureGroup("查看将发送的数据") {
-            ScrollView {
-                Text(chat.lastContext.isEmpty ? chat.contextPreview() : chat.lastContext)
-                    .font(.system(size: 9.5, design: .monospaced))
+    @ViewBuilder
+    private func messageView(_ message: ChatMessage) -> some View {
+        switch message.role {
+        case .user:
+            HStack {
+                Spacer(minLength: 56)
+                Text(message.shownText)
+                    .font(.system(size: 13))
+                    .lineSpacing(2)
+                    .foregroundStyle(.white)
                     .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        UnevenBubble()
+                            .fill(Color.accentColor)
+                    )
             }
-            .frame(maxHeight: 120)
+        case .assistant:
+            AssistantMessage(message: message,
+                             isStreaming: chat.isStreaming && message.id == chat.messages.last?.id,
+                             isLast: message.id == chat.messages.last?.id,
+                             onRegenerate: { chat.regenerate() })
         }
-        .font(.system(size: 10))
+    }
+
+    private var followUpChips: some View {
+        FlowLayout(spacing: 6) {
+            ForEach(followUps, id: \.self) { text in
+                Button(text) { chat.send(text) }
+                    .buttonStyle(ChipButtonStyle())
+            }
+        }
+        .padding(.leading, 34)
+    }
+
+    // MARK: Composer
+
+    private var composer: some View {
+        VStack(spacing: 6) {
+            if let error = chat.errorMessage {
+                errorBanner(error)
+            }
+
+            HStack(alignment: .bottom, spacing: 8) {
+                TextField("问点什么，例如：为什么风扇一直响？", text: $chat.input, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                    .lineLimit(1...5)
+                    .focused($inputFocused)
+                    .onSubmit { submit() }
+                    .onChange(of: chat.input) { value in
+                        // Return sends; Option/Shift+Return keeps the newline.
+                        guard value.hasSuffix("\n") else { return }
+                        let flags = NSEvent.modifierFlags
+                        if flags.contains(.option) || flags.contains(.shift) { return }
+                        chat.input = String(value.dropLast())
+                        submit()
+                    }
+                    .padding(.vertical, 5)
+
+                if chat.isStreaming {
+                    Button { chat.cancel() } label: {
+                        ZStack {
+                            Circle().fill(Color.primary.opacity(0.85))
+                            RoundedRectangle(cornerRadius: 2).fill(Color(nsColor: .windowBackgroundColor))
+                                .frame(width: 9, height: 9)
+                        }
+                        .frame(width: 26, height: 26)
+                    }
+                    .buttonStyle(.plain)
+                    .help("停止生成")
+                } else {
+                    Button { submit() } label: {
+                        ZStack {
+                            Circle().fill(canSend ? AnyShapeStyle(Brand.gradient) : AnyShapeStyle(Color.primary.opacity(0.12)))
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+                        .frame(width: 26, height: 26)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canSend)
+                    .keyboardShortcut(.return, modifiers: .command)
+                    .help("发送（Return）")
+                }
+            }
+            .padding(.leading, 12)
+            .padding(.trailing, 6)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color(nsColor: .textBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(inputFocused ? Color.accentColor.opacity(0.5) : Color.primary.opacity(0.12),
+                                  lineWidth: inputFocused ? 1.2 : 0.8)
+            )
+            .shadow(color: .black.opacity(0.04), radius: 4, y: 1)
+
+            Text("Return 发送 · ⇧Return 换行 · AI 回答仅供参考")
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
+    }
+
+    private var canSend: Bool {
+        !chat.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func submit() {
+        guard canSend, !chat.isStreaming else { return }
+        chat.send(chat.input)
+    }
+
+    private func errorBanner(_ error: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(LoadLevel.busy.tint)
+            Text(error)
+                .font(.system(size: 11.5))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
+            if chat.errorNeedsKey {
+                Button("更换 Key") { chat.settingsOpen = true }
+                    .controlSize(.small)
+            } else if chat.canRetry {
+                Button("重试") { chat.retry() }
+                    .controlSize(.small)
+            }
+            Button { chat.dismissError() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9.5, weight: .bold))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(LoadLevel.busy.tint.opacity(0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(LoadLevel.busy.tint.opacity(0.3), lineWidth: 0.5)
+        )
+    }
+}
+
+// MARK: - Assistant message
+
+private struct AssistantMessage: View {
+    let message: ChatMessage
+    let isStreaming: Bool
+    let isLast: Bool
+    let onRegenerate: () -> Void
+    @State private var hovering = false
+    @State private var copied = false
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            AIAvatar(size: 24)
+            VStack(alignment: .leading, spacing: 8) {
+                if message.text.isEmpty {
+                    TypingIndicator()
+                        .padding(.top, 6)
+                } else {
+                    MarkdownText(text: message.text)
+                }
+
+                if !isStreaming && !message.text.isEmpty {
+                    HStack(spacing: 2) {
+                        smallAction(copied ? "checkmark" : "doc.on.doc",
+                                    copied ? "已复制" : "复制") { copy() }
+                        if isLast {
+                            smallAction("arrow.clockwise", "重新生成", action: onRegenerate)
+                        }
+                    }
+                    .opacity(hovering || isLast ? 1 : 0)
+                }
+            }
+            .padding(.top, 2)
+            Spacer(minLength: 20)
+        }
+        .onHover { hovering = $0 }
+    }
+
+    private func smallAction(_ symbol: String, _ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 3) {
+                Image(systemName: symbol)
+                Text(title)
+            }
+            .font(.system(size: 10.5))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
         .foregroundStyle(.secondary)
     }
 
-    private func bubble(_ message: ChatMessage) -> some View {
-        HStack(alignment: .top, spacing: 0) {
-            if message.role == .user { Spacer(minLength: 44) }
-
-            Text(rendered(message.text))
-                .font(.system(size: 12))
-                .lineSpacing(2)
-                .textSelection(.enabled)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 9)
-                        .fill(message.role == .user
-                              ? Color.accentColor.opacity(0.14)
-                              : Color.primary.opacity(0.055))
-                )
-                .frame(maxWidth: 360, alignment: .leading)
-
-            if message.role == .assistant { Spacer(minLength: 44) }
-        }
+    private func copy() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(message.text, forType: .string)
+        copied = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
     }
+}
 
-    private func rendered(_ text: String) -> AttributedString {
-        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
-    }
+private struct StarterRow: View {
+    let icon: String
+    let text: String
+    let action: () -> Void
+    @State private var hovering = false
+    @Environment(\.isEnabled) private var enabled
 
-    private var inputBar: some View {
-        VStack(spacing: 6) {
-            if let error = chat.errorMessage {
-                HStack(spacing: 6) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                    Text(error)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 4)
-                    Button { chat.dismissError() } label: {
-                        Image(systemName: "xmark")
-                    }
-                    .buttonStyle(.borderless)
-                }
-                .font(.system(size: 10))
-                .foregroundStyle(.orange)
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 9) {
+                Image(systemName: icon)
+                    .font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(Brand.orange)
+                    .frame(width: 18)
+                Text(text)
+                    .font(.system(size: 12.5))
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+                    .opacity(hovering ? 1 : 0)
             }
-
-            HStack(spacing: 8) {
-                TextField("问点什么，例如：为什么风扇响？", text: $chat.input)
-                    .textFieldStyle(.roundedBorder)
-                    .onSubmit { chat.send(chat.input) }
-
-                if chat.isStreaming {
-                    Button("停止") { chat.cancel() }
-                        .controlSize(.small)
-                } else {
-                    Button { chat.send(chat.input) } label: {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 18))
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(chat.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 11)
             .padding(.vertical, 9)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.primary.opacity(hovering ? 0.07 : 0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
+            )
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .opacity(enabled ? 1 : 0.5)
+        .onHover { hovering = $0 }
+    }
+}
+
+/// Chat bubble with a tighter bottom-right corner, pointing at the sender.
+private struct UnevenBubble: Shape {
+    func path(in rect: CGRect) -> Path {
+        let big: CGFloat = 14
+        let small: CGFloat = 4
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX + big, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX - big, y: rect.minY))
+        path.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.minY + big), control: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - small))
+        path.addQuadCurve(to: CGPoint(x: rect.maxX - small, y: rect.maxY), control: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX + big, y: rect.maxY))
+        path.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.maxY - big), control: CGPoint(x: rect.minX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + big))
+        path.addQuadCurve(to: CGPoint(x: rect.minX + big, y: rect.minY), control: CGPoint(x: rect.minX, y: rect.minY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct TypingIndicator: View {
+    @State private var phase = false
+
+    var body: some View {
+        HStack(spacing: 5) {
+            ForEach(0..<3) { index in
+                Circle()
+                    .fill(Brand.orange)
+                    .frame(width: 6, height: 6)
+                    .opacity(phase ? 1 : 0.25)
+                    .scaleEffect(phase ? 1 : 0.7)
+                    .animation(.easeInOut(duration: 0.55)
+                                .repeatForever(autoreverses: true)
+                                .delay(Double(index) * 0.18),
+                               value: phase)
+            }
+            Text("正在结合实时数据分析…")
+                .font(.system(size: 11.5))
+                .foregroundStyle(.secondary)
+                .padding(.leading, 4)
+        }
+        .onAppear { phase = true }
+    }
+}
+
+// MARK: - API key setup
+
+private struct KeySetupView: View {
+    @ObservedObject var chat: AIChat
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 10) {
+                    ZStack {
+                        Circle().fill(Brand.gradient)
+                        Image(systemName: "key.fill")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                    .frame(width: 42, height: 42)
+                    Text(chat.hasKey ? "更换 DeepSeek API Key" : "连接 DeepSeek，开启 AI 分析")
+                        .font(.system(size: 16, weight: .semibold))
+                    Text("只需要配置一次。Key 保存在 macOS 钥匙串里，不写入任何文件，也不会上传到除 DeepSeek 以外的地方。")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    step(1, "在 DeepSeek 开放平台创建一个 API Key") {
+                        Button {
+                            if let url = URL(string: "https://platform.deepseek.com/api_keys") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        } label: {
+                            Label("打开 platform.deepseek.com", systemImage: "arrow.up.right.square")
+                                .font(.system(size: 11.5))
+                        }
+                        .buttonStyle(.link)
+                    }
+                    step(2, "把 Key 粘贴到这里") {
+                        SecureField("sk-…", text: $chat.keyDraft)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 13, design: .monospaced))
+                            .focused($focused)
+                            .onSubmit { chat.saveKey() }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color(nsColor: .textBackgroundColor))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .strokeBorder(focused ? Color.accentColor.opacity(0.6) : Color.primary.opacity(0.15),
+                                                  lineWidth: focused ? 1.2 : 0.8)
+                            )
+                    }
+                }
+                .card(padding: 14)
+
+                Button { chat.saveKey() } label: {
+                    Label("保存并开始使用", systemImage: "checkmark")
+                }
+                .buttonStyle(GradientButtonStyle())
+                .disabled(chat.keyDraft.trimmingCharacters(in: .whitespaces).isEmpty)
+                .opacity(chat.keyDraft.trimmingCharacters(in: .whitespaces).isEmpty ? 0.55 : 1)
+
+                if let note = chat.keyNote {
+                    Text(note)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+
+                if chat.hasKey {
+                    HStack {
+                        Button("返回对话") { chat.settingsOpen = false }
+                            .buttonStyle(.link)
+                        Spacer()
+                        Button("删除已保存的 Key", role: .destructive) { chat.removeKey() }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(LoadLevel.hot.tint)
+                    }
+                    .font(.system(size: 11.5))
+                }
+
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "lock.shield")
+                    Text("分析时只发送 CPU、内存、温度、应用名和本机建议到 api.deepseek.com，按 DeepSeek 的标准计费。对话只保存在内存里，退出即清空。")
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .font(.system(size: 10.5))
+                .foregroundStyle(.tertiary)
+            }
+            .padding(20)
+        }
+        .onAppear { focused = true }
+    }
+
+    private func step<Content: View>(_ number: Int, _ title: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text("\(number)")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .frame(width: 20, height: 20)
+                .background(Circle().fill(Brand.orange))
+            VStack(alignment: .leading, spacing: 7) {
+                Text(title)
+                    .font(.system(size: 12.5, weight: .medium))
+                content()
+            }
+        }
+    }
+}
+
+/// Wraps children onto new lines when they run out of width.
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = arrange(width: proposal.width ?? .infinity, subviews: subviews)
+        let height = rows.reduce(0) { $0 + $1.height } + spacing * CGFloat(max(rows.count - 1, 0))
+        let width = rows.map(\.width).max() ?? 0
+        return CGSize(width: proposal.width ?? width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for row in arrange(width: bounds.width, subviews: subviews) {
+            var x = bounds.minX
+            for index in row.indices {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
+            y += row.height + spacing
+        }
+    }
+
+    private struct Row {
+        var indices: [Int] = []
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+    }
+
+    private func arrange(width: CGFloat, subviews: Subviews) -> [Row] {
+        var rows: [Row] = [Row()]
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            let needed = rows[rows.count - 1].indices.isEmpty ? size.width : rows[rows.count - 1].width + spacing + size.width
+            if needed > width, !rows[rows.count - 1].indices.isEmpty {
+                rows.append(Row())
+            }
+            var row = rows[rows.count - 1]
+            row.width = row.indices.isEmpty ? size.width : row.width + spacing + size.width
+            row.height = max(row.height, size.height)
+            row.indices.append(index)
+            rows[rows.count - 1] = row
+        }
+        return rows
     }
 }

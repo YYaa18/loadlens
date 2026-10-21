@@ -84,9 +84,12 @@ final class DeepSeekClient {
 
     private func mockStream(onDelta: @escaping (String) -> Void) async throws {
         let text = """
-        最明显的占用来自 ZCode（约 55% 的一个核心）和窗口合成（约 30%），内存交换区 3.6 GB，属于偏紧。风扇响主要是这两个进程叠加造成的。
+        **结论：电脑有点忙，但不危险。** 最明显的占用来自 ZCode（约 55% 的一个核心）和窗口合成（约 30%），内存交换区 3.6 GB，属于偏紧。
 
-        建议先关掉暂时不用的对话窗口，尤其是已经开着但没在用的 AI 客户端；如果还觉得热，重启一次能同时清掉交换区和显卡的累积状态。
+        建议：
+        1. 关掉暂时不用的对话窗口，尤其是开着但没在用的 AI 客户端；
+        2. 少开几个浏览器标签，减轻窗口合成的压力；
+        3. 如果还觉得热，**重启一次**能同时清掉交换区和显卡的累积状态。
         """
         for character in text {
             try Task.checkCancellation()

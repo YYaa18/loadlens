@@ -104,6 +104,22 @@ final class Monitor: ObservableObject {
         NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
     }
 
+    /// Asks the app to quit normally (it can still prompt to save documents).
+    func quit(_ app: AppUsage) {
+        guard let path = app.bundlePath else { return }
+        for running in NSWorkspace.shared.runningApplications where running.bundleURL?.path == path {
+            running.terminate()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            self?.refreshNow()
+        }
+    }
+
+    func reveal(_ app: AppUsage) {
+        guard let path = app.bundlePath else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+    }
+
     func copyReport() {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
@@ -194,7 +210,7 @@ final class Monitor: ObservableObject {
             self.snapshot = snap
             self.diagnosis = diag
             let percent = "\(Int(cpu.rounded()))%"
-            self.menuTitle = diag.level == .hot ? "🔥 " + percent : percent
+            self.menuTitle = percent
             switch diag.level {
             case .calm: self.menuSymbol = "checkmark.circle"
             case .busy: self.menuSymbol = "exclamationmark.triangle"

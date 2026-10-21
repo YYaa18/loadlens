@@ -16,6 +16,8 @@ xcrun swiftc -O -swift-version 5 \
     "$ROOT/Sources/Notifier.swift" \
     "$ROOT/Sources/Keychain.swift" \
     "$ROOT/Sources/DeepSeekClient.swift" \
+    "$ROOT/Sources/Theme.swift" \
+    "$ROOT/Sources/MarkdownText.swift" \
     "$ROOT/Sources/AIChat.swift" \
     "$ROOT/Sources/AIChatView.swift" \
     "$ROOT/Sources/AIChatWindow.swift" \

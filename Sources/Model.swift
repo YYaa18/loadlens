@@ -57,8 +57,8 @@ func formatGB(_ bytes: UInt64) -> String {
 }
 
 private let friendlySystemNames: [String: String] = [
-    "kernel_task": "系统内核（降温/调度）",
-    "WindowServer": "窗口合成（系统）",
+    "kernel_task": "系统内核",
+    "WindowServer": "窗口合成",
     "MTLCompilerService": "显卡着色器编译",
     "mds": "Spotlight 文件索引",
     "mds_stores": "Spotlight 文件索引",
@@ -91,10 +91,33 @@ private let friendlySystemNames: [String: String] = [
     "assistantd": "Siri 服务",
     "duetexpertd": "Siri 建议服务",
     "corespeechd": "Siri 语音服务",
+    "syspolicyd": "安全策略检查",
+    "trustd": "证书校验",
+    "XprotectService": "XProtect 安全扫描",
+    "XProtect": "XProtect 安全扫描",
+    "nesessionmanager": "网络扩展服务",
+    "com.apple.DriverKit-AppleBCMWLAN": "Wi-Fi 驱动",
+    "configd": "网络配置",
+    "mDNSResponder": "网络域名解析",
+    "softwareupdated": "软件更新",
+    "photoanalysisd": "照片分析",
+    "mediaanalysisd": "媒体分析",
+    "logd": "系统日志",
+    "runningboardd": "后台任务调度",
+    "fseventsd": "文件变更监听",
+    "distnoted": "系统通知分发",
+    "hidd": "键盘鼠标输入",
     "系统进程": "系统进程"
 ]
 
 private let knownSystemNames: Set<String> = Set(friendlySystemNames.keys)
+
+/// Turns reverse-DNS names like "com.apple.DriverKit-AppleFoo" into something shorter.
+func prettifyProcessName(_ raw: String) -> String {
+    guard raw.hasPrefix("com.") || raw.hasPrefix("org.") else { return raw }
+    let last = raw.split(separator: ".").last.map(String.init) ?? raw
+    return last.replacingOccurrences(of: "DriverKit-", with: "")
+}
 
 func appBundlePath(from executablePath: String) -> String? {
     guard !executablePath.isEmpty else { return nil }
@@ -135,9 +158,9 @@ func aggregate(_ samples: [ProcessSample], excluding: Set<pid_t>) -> [AppUsage] 
             key = "app:ZCode"
             isSystem = false
         } else {
-            name = sample.name
+            name = prettifyProcessName(sample.name)
             key = "proc:" + sample.name
-            isSystem = knownSystemNames.contains(sample.name)
+            isSystem = knownSystemNames.contains(sample.name) || sample.name.hasPrefix("com.apple.")
         }
 
         var bucket = buckets[key] ?? Bucket(name: name,

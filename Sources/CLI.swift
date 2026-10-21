@@ -62,7 +62,7 @@ func showPreviewWindow(seconds: Double) {
     monitor.panelDidOpen()
 
     let hosting = NSHostingView(rootView: PanelView(monitor: monitor))
-    hosting.frame = NSRect(x: 0, y: 0, width: 400, height: 620)
+    hosting.frame = NSRect(x: 0, y: 0, width: panelWidth, height: 620)
 
     let window = NSWindow(contentRect: hosting.frame,
                           styleMask: [.titled, .closable],
@@ -76,7 +76,7 @@ func showPreviewWindow(seconds: Double) {
 
     RunLoop.main.run(until: Date().addingTimeInterval(0.8))
     let fitting = hosting.fittingSize
-    window.setContentSize(NSSize(width: 400, height: min(max(fitting.height, 320), 820)))
+    window.setContentSize(NSSize(width: panelWidth, height: min(max(fitting.height, 320), 820)))
     window.center()
     window.makeKeyAndOrderFront(nil)
 
@@ -99,7 +99,7 @@ func renderPreview(to path: String) {
     RunLoop.main.run(until: Date().addingTimeInterval(2.5))
 
     let view = PanelView(monitor: monitor)
-        .frame(width: 400)
+        .frame(width: panelWidth)
         .background(Color(nsColor: .windowBackgroundColor))
 
     let renderer = ImageRenderer(content: view)

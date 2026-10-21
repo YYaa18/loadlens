@@ -9,8 +9,7 @@ struct LoadLensApp: App {
 
         if CommandLine.arguments.contains("--ai-preview") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
-                AIChatWindowController.shared.show()
-                AIChat.shared.analyzeCurrentState()
+                AIChatWindowController.shared.show(anchor: nil, openSettings: false, autoAnalyze: true)
             }
         }
     }
@@ -19,7 +18,10 @@ struct LoadLensApp: App {
         MenuBarExtra {
             PanelView(monitor: monitor)
         } label: {
+            Image(nsImage: MenuBarIcon.gauge(cpu: monitor.snapshot.cpu,
+                                             hot: monitor.diagnosis.level == .hot))
             Text(monitor.menuTitle)
+                .monospacedDigit()
         }
         .menuBarExtraStyle(.window)
     }
