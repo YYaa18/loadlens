@@ -23,6 +23,7 @@ xcrun swiftc -O -swift-version 5 \
     "$ROOT/Sources/AIChat.swift" \
     "$ROOT/Sources/AIChatView.swift" \
     "$ROOT/Sources/AIChatWindow.swift" \
+    "$ROOT/Sources/AIDock.swift" \
     "$ROOT/Sources/Monitor.swift" \
     "$ROOT/Sources/Views.swift" \
     "$ROOT/Sources/App.swift" \

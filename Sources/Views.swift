@@ -5,10 +5,44 @@ let panelWidth: CGFloat = 360
 
 struct PanelView: View {
     @ObservedObject var monitor: Monitor
+    @ObservedObject private var dock = AIDock.shared
     @State private var toast: String?
     @State private var spin = 0.0
+    @State private var mainHeight: CGFloat = 600
 
     var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            if dock.isOpen && dock.side == .left {
+                aiPane
+                Divider()
+            }
+            mainPane
+            if dock.isOpen && dock.side == .right {
+                Divider()
+                aiPane
+            }
+        }
+        .background(WindowReader { AIDock.shared.attach($0) })
+        .onAppear { monitor.panelDidOpen() }
+        .onDisappear {
+            monitor.panelDidClose()
+            dock.panelClosed()
+        }
+    }
+
+    private var aiPane: some View {
+        AIChatView(chat: AIChat.shared,
+                   embedded: true,
+                   onClose: { dock.close() },
+                   onPopOut: {
+                       dock.close()
+                       AIChatWindowController.shared.show(anchor: nil, autoAnalyze: false)
+                   })
+            .frame(width: AIDock.paneWidth, height: mainHeight)
+            .background(Color.primary.opacity(0.02))
+    }
+
+    private var mainPane: some View {
         VStack(spacing: 0) {
             topBar
             VStack(spacing: 10) {
@@ -23,9 +57,10 @@ struct PanelView: View {
             footer
         }
         .frame(width: panelWidth)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(GeometryReader { Color.clear.preference(key: HeightKey.self, value: $0.size.height) })
+        .onPreferenceChange(HeightKey.self) { mainHeight = $0 }
         .overlay(alignment: .bottom) { toastView }
-        .onAppear { monitor.panelDidOpen() }
-        .onDisappear { monitor.panelDidClose() }
         .onChange(of: monitor.settingsMessage) { message in
             if let message { showToast(message) }
         }
@@ -279,12 +314,12 @@ struct PanelView: View {
                 }
             }
 
-            Button { openAI(settings: false) } label: {
+            Button { toggleAI() } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "sparkles")
-                    Text("让 AI 帮我深入分析")
+                    Text(dock.isOpen ? "收起 AI 助手" : "让 AI 帮我深入分析")
                     Spacer(minLength: 0)
-                    Image(systemName: "arrow.right")
+                    Image(systemName: aiArrow)
                         .font(.system(size: 11, weight: .bold))
                 }
             }
@@ -354,20 +389,16 @@ struct PanelView: View {
         showToast("诊断报告已复制，可以直接粘贴发给别人")
     }
 
-    private func openAI(settings: Bool) {
-        let anchor = currentPanelFrame()
-        AIChatWindowController.shared.show(anchor: anchor,
-                                           openSettings: settings,
-                                           autoAnalyze: !settings)
+    private func toggleAI() {
+        dock.toggle()
+        if dock.isOpen { AIChat.shared.startIfEmpty() }
     }
 
-    private func currentPanelFrame() -> NSRect? {
-        if let key = NSApp.keyWindow, key.className.contains("MenuBarExtra") || key.frame.width <= panelWidth + 2 {
-            return key.frame
-        }
-        return NSApp.windows.first {
-            $0.isVisible && $0.className.contains("MenuBarExtra")
-        }?.frame
+    /// Points toward where the pane opens (or closes back from).
+    private var aiArrow: String {
+        let towardLeft = dock.side == .left
+        if dock.isOpen { return towardLeft ? "chevron.right" : "chevron.left" }
+        return "sidebar.right"
     }
 }
 

@@ -3,6 +3,10 @@ import AppKit
 
 struct AIChatView: View {
     @ObservedObject var chat: AIChat
+    /// Shown inside the menu bar panel instead of its own window.
+    var embedded = false
+    var onClose: (() -> Void)? = nil
+    var onPopOut: (() -> Void)? = nil
     @ObservedObject private var monitor = Monitor.shared
     @ObservedObject private var store = AIConfigStore.shared
     @FocusState private var inputFocused: Bool
@@ -29,9 +33,9 @@ struct AIChatView: View {
                 composer
             }
         }
-        .frame(minWidth: 380, minHeight: 460)
-        .background(Color(nsColor: .windowBackgroundColor))
-        .ignoresSafeArea(.container, edges: .top)
+        .frame(minWidth: embedded ? 0 : 380, minHeight: embedded ? 0 : 460)
+        .background(embedded ? Color.clear : Color(nsColor: .windowBackgroundColor))
+        .ignoresSafeArea(.container, edges: embedded ? [] : .top)
         .onAppear { inputFocused = true }
         .onChange(of: store.isReady) { ready in
             if ready { chat.startIfEmpty() }
@@ -44,21 +48,29 @@ struct AIChatView: View {
         HStack(spacing: 9) {
             AIAvatar(size: 26)
             VStack(alignment: .leading, spacing: 1) {
-                Text("AI 诊断助手")
+                Text(embedded ? "AI 助手" : "AI 诊断助手")
                     .font(.system(size: 13, weight: .semibold))
+                    .fixedSize()
                 modelSwitcher
             }
-            Spacer()
+            .layoutPriority(1)
+            Spacer(minLength: 4)
             IconButton(symbol: "square.and.pencil", help: "新对话") { chat.clear() }
                 .disabled(chat.messages.isEmpty && !chat.isStreaming)
                 .opacity(chat.messages.isEmpty ? 0.4 : 1)
             IconButton(symbol: "gearshape", help: "AI 模型设置") {
                 AISettingsWindowController.shared.show()
             }
+            if let onPopOut {
+                IconButton(symbol: "macwindow.on.rectangle", help: "在独立窗口中打开", action: onPopOut)
+            }
+            if let onClose {
+                IconButton(symbol: "xmark", help: "收起 AI 助手", action: onClose)
+            }
         }
-        .padding(.leading, 90)   // clear the traffic lights
-        .padding(.trailing, 12)
-        .frame(height: 52)
+        .padding(.leading, embedded ? 12 : 90)   // window mode: clear the traffic lights
+        .padding(.trailing, embedded ? 8 : 12)
+        .frame(height: embedded ? 48 : 52)
     }
 
     private var modelSwitcher: some View {
@@ -136,10 +148,9 @@ struct AIChatView: View {
         let snap = monitor.snapshot
         let diag = monitor.diagnosis
         return HStack(spacing: 6) {
-            Image(systemName: "eye")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.secondary)
-            Text("AI 能看到")
+            LiveDot(tint: diag.level.tint)
+                .help("面板每 5 秒刷新一次，每次提问都会带上最新数据")
+            Text("AI 实时读取")
                 .font(.system(size: 10.5))
                 .foregroundStyle(.secondary)
             ScrollView(.horizontal, showsIndicators: false) {

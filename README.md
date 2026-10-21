@@ -49,7 +49,8 @@ open build/LoadLens.app
 2. 左侧选择服务，填 API Key（只存 macOS 钥匙串），需要时修改接口地址。
 3. 点「获取模型列表」从服务端拉取可用模型，或手动添加模型名；点「测试连接」确认可用。
 4. 点「设为当前模型」。之后在 AI 窗口顶部的模型名上可以随时切换已配置的服务和模型。
-5. 面板底部点「让 AI 帮我深入分析」，AI 窗口在面板位置打开并自动分析一次当前状态。Return 发送，Shift+Return 换行。
+5. 面板底部点「让 AI 帮我深入分析」，AI 助手直接在面板旁边展开（右侧放得下就在右侧，否则在左侧），并自动分析一次当前状态。Return 发送，Shift+Return 换行。
+6. AI 助手顶部的「AI 实时读取」会随面板一起刷新，每次提问都带上最新数据；需要更大的窗口时，点右上角的窗口图标改为独立窗口。
 
 每次提问会把当前的 CPU、内存、温度、占用最高的应用名和本机规则建议作为上下文，发送到你选择的服务。不会发送文件内容。窗口顶部「AI 能看到」一栏可以查看完整内容。对话只保存在内存里，退出应用即清空。
 
@@ -115,7 +116,8 @@ Sources/Theme.swift      配色、卡片与通用控件
 Sources/MarkdownText.swift   AI 回复的 Markdown 渲染
 Sources/AIChat.swift     AI 对话状态与上下文
 Sources/AIChatView.swift AI 窗口界面
-Sources/AIChatWindow.swift   AI 窗口管理
+Sources/AIChatWindow.swift   AI 独立窗口管理
+Sources/AIDock.swift     AI 助手贴在面板旁边展开（左右自适应）
 Sources/Monitor.swift    定时调度、历史曲线与发布
 Sources/Views.swift      面板界面
 Sources/App.swift        菜单栏入口
