@@ -1,49 +1,94 @@
-# 负载侦探 LoadLens
+<p align="center">
+  <img src="Resources/icon_1024.png" width="128" alt="负载侦探图标">
+</p>
 
-![负载侦探图标](Resources/icon_1024.png)
+<h1 align="center">负载侦探 LoadLens</h1>
 
-一个用大白话告诉你「电脑为什么变慢、风扇为什么响」的 macOS 菜单栏小工具。
+<p align="center">
+  用大白话告诉你「电脑为什么变慢、风扇为什么响、硬盘被谁占满了」的 macOS 菜单栏小工具。<br>
+  内置 AI 助手，能自己查数据、深入分析。
+</p>
 
-菜单栏常驻一个 CPU 圆环 + 百分比（点击它打开面板），点开就能看到：
+<p align="center">
+  <img alt="macOS 13+" src="https://img.shields.io/badge/macOS-13%2B-black">
+  <img alt="Swift" src="https://img.shields.io/badge/Swift-SwiftUI-orange">
+  <img alt="License" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue">
+</p>
 
-- 状态总览卡片：一句话结论、CPU 大数字、趋势曲线（平均值 / 峰值 / 负载）
-- 内存、温度、磁盘三个指标卡（悬停看交换区、压缩内存等细节，点磁盘卡进入「硬盘」页）
-- 「硬盘」页：
-  - 启动盘容量（已用 / 可自动清除 / 空闲）、SMART 健康状态、本地 Time Machine 快照数量
-  - 实时读写速度和曲线，以及读写最多的应用
-  - 外接磁盘的容量，一键推出
-  - 「可清理空间」分析：统计下载、废纸篓、应用缓存、日志、Xcode、iOS 模拟器、开发工具缓存、iPhone 备份的大小，可在访达中打开查看；只读大小，不删除任何文件
-- 占用排行（按应用合并，比如 Chrome 的所有渲染进程算一项），悬停可退出应用、在访达中显示
-- 根据当前情况生成的「诊断建议」，以及一键进入 AI 深入分析
-- 右上角齿轮菜单：开机自启、高负载通知、AI 设置、复制诊断报告、退出
-- 持续高负载 2 分钟时弹系统通知（30 分钟内不重复打扰）
-- 让 AI 结合当前快照做分析，也可以继续追问；支持 DeepSeek、OpenAI、Claude、Gemini、国产大模型、本地 Ollama 和自定义接口
-- 一键复制诊断信息，方便发给别人求助
+---
 
-## 运行
+## 功能一览
+
+**系统监控**（菜单栏常驻 CPU 圆环 + 百分比，点击打开面板）
+
+- 状态总览：一句话结论、CPU 大数字、趋势曲线（平均值 / 峰值 / 负载）
+- 内存、温度、磁盘三个指标卡；悬停看交换区、压缩内存等细节
+- 占用排行：同一应用的多个进程合并成一项，可直接退出应用、在访达中显示
+- 诊断建议：根据当前状态给出能马上做的事
+- 持续高负载 2 分钟时发系统通知（30 分钟内不重复打扰）
+
+**硬盘管理**（面板顶部切到「硬盘」）
+
+- 启动盘容量（已用 / 可自动清除 / 空闲）、SMART 健康状态、本地 Time Machine 快照
+- 实时读写速度、趋势曲线、读写最多的应用；外接磁盘一键推出
+- 可清理空间分析：下载、废纸篓、应用缓存、日志、Xcode、iOS 模拟器、开发工具缓存、iPhone 备份各占多少，只读大小、不删除任何文件
+
+**AI 助手**（贴在面板旁边展开）
+
+- 支持 DeepSeek、OpenAI、Claude、Gemini、Kimi、通义千问、智谱、硅基流动、OpenRouter、本地 Ollama 和任意兼容接口
+- 能自己调用只读工具查数据：比如「应用缓存里都是哪些应用」，它会查出每个文件夹属于哪个应用、应用是否已卸载，再告诉你哪些能放心清理
+- 硬盘页每一项旁的 ✨、占用排行里的「问 AI」，一键深入分析
+
+**其他**：开机自启、复制诊断报告、终端体检命令。
+
+## 快速开始
+
+### 环境要求
+
+- macOS 13 Ventura 或更高版本（Apple 芯片和 Intel 都可以）
+- Xcode 命令行工具（只需要 `swiftc`，不需要完整的 Xcode）。没有的话先运行 `xcode-select --install`
+
+### 安装
 
 ```bash
+git clone https://github.com/YYaa18/loadlens.git
+cd loadlens
 ./install.sh
 ```
 
-脚本会编译并安装到 `~/Applications/负载侦探.app`，然后启动。也可以直接：
+脚本会编译、安装到 `~/Applications/负载侦探.app` 并启动，菜单栏右上角会出现一个圆环和 CPU 百分比。编译大约需要 1 分钟。
 
-```bash
-./build.sh
-open build/LoadLens.app
+可选：安装前先运行一次 `./tools/setup-signing.sh`，它会在本机钥匙串里创建一个只在本机使用的自签名证书。以后每次编译都用它签名，「完全磁盘访问权限」等系统授权在重新编译后不会丢。
+
+### 让 AI 帮你安装
+
+用 Claude Code、Cursor、Codex 等 AI 编程工具时，把下面这段话发给它即可。仓库里的 [AGENTS.md](AGENTS.md) 写好了完整的安装、验证和排错步骤：
+
+```text
+请帮我安装负载侦探（LoadLens）：https://github.com/YYaa18/loadlens
+克隆仓库后按照仓库里 AGENTS.md 的步骤安装并验证，完成后告诉我结果，以及接下来需要我自己做什么。
 ```
 
-可选：先运行一次 `./tools/setup-signing.sh`，在本机钥匙串里创建一个自签名的代码签名证书（只在本机使用）。之后每次编译都用它签名，应用身份保持不变，「完全磁盘访问权限」「下载文件夹」等系统授权在重新编译后也不会丢。不创建也能正常编译，会退回临时（ad hoc）签名。
-
-终端里做一次体检（不开界面）：
+### 卸载
 
 ```bash
-./build/LoadLens.app/Contents/MacOS/LoadLens --diagnose
+./uninstall.sh            # 退出并删除应用、移除开机自启，保留设置和 API Key
+./uninstall.sh --purge    # 连同设置和钥匙串里的 API Key 一起删除
 ```
 
-## AI 分析
+## 使用指南
 
-支持主流大模型服务，也可以接本地模型或任意兼容接口：
+### 主面板
+
+点菜单栏的圆环打开面板。右上角齿轮里有：开机自动启动、持续高负载时通知、AI 模型设置、复制诊断报告、打开活动监视器、退出。
+
+### 硬盘页
+
+点面板顶部的「硬盘」，或者点概览页的「磁盘」卡片。点「开始分析」统计可清理空间；应用缓存可能有几十万个小文件，第一次统计需要几十秒，大目录会显示实时进度。每一项右侧的文件夹图标可以在访达中打开，✨ 可以让 AI 分析这一项里都有什么。
+
+### AI 助手
+
+**1. 配置模型**：齿轮 →「AI 模型设置…」，左侧选服务、填 API Key，点「获取模型列表」和「测试连接」，再点「设为当前模型」。
 
 | 服务 | 接口格式 |
 | --- | --- |
@@ -52,45 +97,74 @@ open build/LoadLens.app
 | Ollama（本地） | OpenAI 兼容，无需 Key |
 | 自定义 | 可选 OpenAI 兼容或 Anthropic 格式，适合公司网关、LM Studio、vLLM 等 |
 
-1. 打开菜单栏面板 → 右上角齿轮 →「AI 模型设置…」（或 AI 窗口右上角齿轮）。
-2. 左侧选择服务，填 API Key（只存 macOS 钥匙串），需要时修改接口地址。
-3. 点「获取模型列表」从服务端拉取可用模型，或手动添加模型名；点「测试连接」确认可用。
-4. 点「设为当前模型」。之后在 AI 窗口顶部的模型名上可以随时切换已配置的服务和模型。
-5. 面板底部点「让 AI 帮我深入分析」，AI 助手直接在面板旁边展开（右侧放得下就在右侧，否则在左侧），并自动分析一次当前状态。Return 发送，Shift+Return 换行。
-6. AI 助手顶部的「AI 实时读取」会随面板一起刷新，每次提问都带上最新数据；需要更大的窗口时，点右上角的窗口图标改为独立窗口。
+**2. 开始对话**：面板底部点「让 AI 帮我深入分析」，AI 助手在面板旁边展开（右侧放得下就在右侧，否则在左侧），并先自动分析一次当前状态。Return 发送，Shift+Return 换行；顶部模型名可以随时切换；需要大窗口时点右上角的窗口图标。
 
-### AI 能自己查数据（工具调用）
-
-AI 不只看一份摘要：它可以按需调用只读工具深入分析，回答里会显示它查了什么（例如「✓ 查看「应用缓存」明细」）。
+**3. AI 能自己查数据**：回答里会显示它查了什么（例如「✓ 查看「应用缓存」明细」）。所有工具都是只读的，AI 不能删除文件或结束进程，只会告诉你去哪里操作。
 
 | 工具 | 能查到什么 |
 | --- | --- |
 | `list_apps` | 所有应用按 CPU / 内存 / 磁盘读写排序 |
 | `get_app_processes` | 某个应用下的每个进程 |
 | `get_memory_details` | 内存、压缩内存、交换区、占内存最多的应用 |
-| `get_disk_details` | 所有磁盘容量、健康、快照、读写速度 |
+| `get_disk_details` | 所有磁盘的容量、健康、快照、读写速度 |
 | `get_space_overview` | 可清理空间总览（没分析过会自动分析） |
-| `analyze_folder` | 某个目录里每个子文件夹的大小、属于哪个应用、应用是否还安装 / 正在运行、最近修改时间 |
+| `analyze_folder` | 目录里每个子文件夹的大小、所属应用、应用是否已卸载 / 正在运行、最近修改时间 |
 | `get_history` | 最近几分钟 CPU 或硬盘读写的趋势 |
 | `get_system_info` | 型号、芯片、macOS 版本、运行时间等 |
 
-所有工具都是只读的：AI 不能删除文件或结束进程，只会告诉你在哪里操作。「硬盘」页每一项旁边的 ✨、占用排行「⋯」菜单里的「问 AI」可以一键让 AI 分析那一项。OpenAI 兼容接口和 Anthropic 接口都支持；不支持工具调用的模型会自动退回普通对话。
+不支持工具调用的模型会自动退回普通对话。使用 Anthropic 官方接口和 Claude Opus / Sonnet 5.5 等模型时，会自动开启服务端 `fallbacks`：请求被安全策略拒绝时，由服务端换用其他模型重试。
 
-每次提问会把当前的 CPU、内存、温度、占用最高的应用名和本机规则建议作为上下文，发送到你选择的服务。AI 调用工具时，会额外发送它查询到的结果（应用名、进程名、文件夹名和大小）。不会发送文件内容。窗口顶部「AI 实时读取」一栏可以查看完整的快照内容。对话只保存在内存里，退出应用即清空。
+## 隐私与权限
 
-使用 Anthropic 官方接口和 Claude Opus / Sonnet 5.5 等模型时，会自动开启服务端 `fallbacks`：如果请求被安全策略拒绝，由服务端换用其他模型重试。
+- **不需要** sudo、辅助功能或屏幕录制权限；不读取任何文件的内容，只读文件大小。
+- **只有 AI 功能会联网**，而且只连你选择的服务。每次提问会发送当前的 CPU、内存、温度、占用最高的应用名和本机建议；AI 调用工具时会额外发送查到的结果（应用名、进程名、文件夹名和大小）。AI 助手顶部「AI 实时读取」→「详情」可以看到完整内容。对话只保存在内存里，退出即清空。
+- **API Key** 存在 macOS 钥匙串，不写入任何文件。为了重新编译后不再反复弹授权框，Key 以「本机任何应用都可读取」的方式保存，代价是同一用户下运行的其他程序也能读到（安全性接近配置文件）。
+- **可选的系统授权**：统计「下载」时系统可能询问一次；废纸篓、iPhone 备份受隐私保护，需要在「系统设置 → 隐私与安全性 → 完全磁盘访问权限」里允许负载侦探才能统计；通知需要在首次开启时允许。
 
-## 它为什么很省资源
+## 资源占用
 
-- 面板关闭时每 6 秒采样一次总量和本用户进程，实测 CPU 约 0.2%。
-- 面板打开时每 5 秒一次，额外读取系统进程和每个进程的磁盘读写，实测 CPU 约 0.7%。
-- 「实时」脉冲点用 Core Animation 绘制，不会让界面每帧重绘。
-- 硬盘健康（`diskutil`、`tmutil`）最多 30 分钟读一次；可清理空间只在点击「开始分析」时统计，用和 `du` 相同的 `fts` 遍历，几个位置并行，大目录会显示实时进度。
-- 进程数据来自系统 `libproc` 接口，不启动 `top`，不轮询整个进程树。
-- 系统进程（WindowServer、kernel_task 等）因为普通用户权限读不到，才用 `ps` 兜底：CPU 每 30 秒刷新，进程名每 5 分钟刷新。
-- 不联网、不需要 sudo、不需要辅助功能或屏幕录制权限、不读取文件内容。
+| 状态 | 采样频率 | 实测 CPU |
+| --- | --- | --- |
+| 面板关闭 | 每 6 秒，整机总量和本用户进程 | 约 0.2% |
+| 面板打开 | 每 5 秒，额外读取系统进程和每个进程的磁盘读写 | 约 0.7% |
 
-## 数据来源
+- 进程数据来自系统 `libproc` 接口，不启动 `top`；系统进程用 `ps` 兜底，CPU 每 30 秒、进程名每 5 分钟刷新。
+- 硬盘健康最多 30 分钟读一次；可清理空间只在点击「开始分析」时统计，用和 `du` 相同的 `fts` 遍历，多个位置并行。
+- 「实时」脉冲点由 Core Animation 绘制，不会让界面每帧重绘。
+
+## 开发
+
+```bash
+./build.sh                                              # 编译到 build/LoadLens.app
+open build/LoadLens.app                                 # 直接运行（不安装）
+./build/LoadLens.app/Contents/MacOS/LoadLens --diagnose # 终端体检，不开界面
+```
+
+<details>
+<summary>开发用命令行参数</summary>
+
+| 参数 | 作用 |
+| --- | --- |
+| `--diagnose` | 在终端打印一次完整体检 |
+| `--tool-test <工具名> '<JSON 参数>'` | 用实时数据运行一个 AI 工具，打印结果 |
+| `--preview-window [秒]` | 把面板放在普通窗口里显示，便于截图 |
+| `--render-preview <路径>` | 把面板离屏渲染成 PNG |
+| `--ai-preview` | 启动后直接打开 AI 独立窗口并分析一次 |
+| `--settings-preview` | 直接打开 AI 模型设置窗口 |
+| `--keychain-test` / `--keychain-save <账户>` / `--keychain-read <账户>` | 钥匙串读写自检 |
+| `--login-item-on` / `--login-item-off` | 开关开机自启 |
+
+| 环境变量 | 作用 |
+| --- | --- |
+| `LOADLENS_AI_MOCK=1` | AI 返回固定的演示内容，不联网 |
+| `LOADLENS_AI_KEY=<key>` | 临时给当前服务指定 Key |
+| `LOADLENS_SETTINGS_SUITE=<名字>` | 使用独立的设置和钥匙串条目，测试时不影响真实配置 |
+| `LOADLENS_DOCK_SIDE=left` | 强制 AI 助手在面板左侧展开 |
+
+</details>
+
+<details>
+<summary>数据来源</summary>
 
 | 指标 | 来源 |
 | --- | --- |
@@ -100,69 +174,73 @@ AI 不只看一份摘要：它可以按需调用只读工具深入分析，回�
 | 内存 / 压缩内存 | `host_statistics64` + `sysctl vm.swapusage` |
 | 温度状态 | `ProcessInfo.thermalState` |
 | 负载 / 运行时间 | `getloadavg` / `sysctl kern.boottime` |
-| 通知 | `UserNotifications`（首次开启时请求授权） |
 | 磁盘容量 | `URLResourceKey.volumeAvailableCapacityForImportantUsage` 等 |
 | 整机读写速度 | IOKit `IOBlockStorageDriver` 的 Statistics |
 | 单进程读写 | `proc_pid_rusage`（仅本用户进程） |
 | 硬盘健康 / 本地快照 | `diskutil info -plist /`、`tmutil listlocalsnapshots /` |
 | 可清理空间 | `fts` 遍历常见目录，只读文件大小 |
+| 通知 | `UserNotifications`（首次开启时请求授权） |
 | 开机自启 | `~/Library/LaunchAgents/local.loadlens.agent.plist` |
-| AI 分析 | 用户选择的服务，流式返回（OpenAI 兼容 / Anthropic Messages） |
+| AI | 用户选择的服务，流式返回（OpenAI 兼容 / Anthropic Messages），支持工具调用 |
 
-## 已知限制
+</details>
 
-- 没有读取风扇转速和具体温度：需要访问 SMC 或 `sudo powermetrics`，为了保持零权限暂时没做。
-- 系统进程的 CPU 来自 `ps` 的近期平均值，不是严格瞬时值。
-- 系统进程（其他用户）的磁盘读写读不到，只能看到整机总量；没有拆分 GPU 占用。
-- 废纸篓、iPhone 备份等目录受系统隐私保护，需要在「系统设置 → 隐私与安全性 → 完全磁盘访问权限」里允许负载侦探才能统计；第一次分析「下载」时系统可能询问访问权限。
-- 应用缓存可能有几十万个小文件，统计一次需要几十秒，这是文件系统本身的速度。
-- 通知需要系统授权；高负载要持续 2 分钟才提醒，30 分钟内最多一次。
-- 趋势曲线只保存在内存里，退出应用后清空。
-- AI 分析需要自备对应服务的 API Key（本地 Ollama 除外），按各家标准计费；对话不落盘。API Key 以「本机任何应用都可读取」的方式存放在钥匙串，因此重新编译、重新安装后不会再弹授权框；代价是同一用户下运行的其他程序也能读到这些 Key（安全性接近配置文件）。
-- 预置的模型名可能随厂商更新而过时，用「获取模型列表」拉取最新列表即可。
-- 需要 macOS 13 及以上（使用了 `MenuBarExtra`）。
+<details>
+<summary>目录结构</summary>
 
-## 图标
+```
+Sources/
+  App.swift / main.swift     菜单栏入口、命令行参数
+  Monitor.swift              定时采样、历史曲线、通知
+  Sampler.swift              CPU / 内存 / 进程采样
+  Model.swift                进程合并、应用归组、ps 兜底
+  Disk.swift                 磁盘容量、读写速度、健康状态
+  SpaceScanner.swift         可清理空间分析
+  Diagnoser.swift            诊断规则与建议
+  Views.swift                主面板界面
+  DiskViews.swift            「硬盘」页界面
+  Theme.swift                配色、卡片与通用控件
+  AIDock.swift               AI 助手贴在面板旁边展开
+  AIChat.swift               AI 对话状态与上下文
+  AIChatView.swift           AI 对话界面
+  AIChatWindow.swift         AI 独立窗口
+  AISettingsView.swift       AI 模型设置窗口
+  AIProviders.swift          预置模型服务与配置存储
+  AITools.swift              AI 可调用的只读工具
+  LLMClient.swift            流式客户端与工具调用（OpenAI 兼容 / Anthropic）
+  MarkdownText.swift         AI 回复的 Markdown 渲染
+  Keychain.swift             API Key 存取
+  LoginItem.swift            开机自启
+  Notifier.swift             系统通知
+  CLI.swift                  终端体检与开发用预览
+Resources/                   图标
+tools/
+  setup-signing.sh           创建本机自签名证书（可选）
+  IconGen.swift              图标生成器
+build.sh / install.sh / uninstall.sh
+AGENTS.md                    给 AI 编程工具看的安装与开发说明
+```
 
-深色圆角底 + 白色放大镜，镜片里是三根从黄到红、逐渐升高的柱子：放大镜代表“侦探”，递增的暖色柱子代表正在升高的负载，底部的暖光暗示发热。
+</details>
 
-源文件是 `Resources/icon_1024.png`，打包用 `Resources/AppIcon.icns`。重新生成：
+<details>
+<summary>图标</summary>
+
+深色圆角底 + 白色放大镜，镜片里是三根从黄到红、逐渐升高的柱子：放大镜代表“侦探”，递增的暖色柱子代表正在升高的负载。源文件是 `Resources/icon_1024.png`，打包用 `Resources/AppIcon.icns`。重新生成：
 
 ```bash
 swiftc -O -parse-as-library tools/IconGen.swift -o /tmp/icongen
 /tmp/icongen Resources/icon_1024.png
 ```
 
-## 目录
+</details>
 
-```
-Sources/Sampler.swift    系统数据采样
-Sources/Disk.swift       磁盘容量、读写速度、健康状态
-Sources/SpaceScanner.swift   可清理空间分析
-Sources/DiskViews.swift  「硬盘」页界面
-Sources/Model.swift      进程合并、应用归组、ps 兜底
-Sources/Diagnoser.swift  诊断规则与建议生成
-Sources/LoginItem.swift  开机自启（LaunchAgent）
-Sources/Notifier.swift   高负载系统通知
-Sources/Keychain.swift   API Key 的钥匙串存取（每个服务一条）
-Sources/AIProviders.swift    预置模型服务、配置存储
-Sources/LLMClient.swift      通用流式客户端与工具调用循环（OpenAI 兼容 / Anthropic）
-Sources/AITools.swift        AI 可调用的只读数据工具
-Sources/AISettingsView.swift AI 模型设置窗口
-Sources/Theme.swift      配色、卡片与通用控件
-Sources/MarkdownText.swift   AI 回复的 Markdown 渲染
-Sources/AIChat.swift     AI 对话状态与上下文
-Sources/AIChatView.swift AI 窗口界面
-Sources/AIChatWindow.swift   AI 独立窗口管理
-Sources/AIDock.swift     AI 助手贴在面板旁边展开（左右自适应）
-Sources/Monitor.swift    定时调度、历史曲线与发布
-Sources/Views.swift      面板界面
-Sources/App.swift        菜单栏入口
-Sources/CLI.swift        终端报告与开发用预览
-Resources/AppIcon.icns   应用图标
-tools/IconGen.swift      图标生成器
-tools/setup-signing.sh   创建本机自签名证书（可选）
-```
+## 已知限制
+
+- 不读取风扇转速和具体温度（需要 SMC 或 `sudo powermetrics`，为了零权限暂时没做）；温度只有「正常 / 偏热 / 过热」这样的状态。
+- 系统进程的 CPU 来自 `ps` 的近期平均值；它们的磁盘读写读不到，只能看到整机总量；没有拆分 GPU 占用。
+- 趋势曲线和对话只保存在内存里，退出应用后清空。
+- AI 需要自备对应服务的 API Key（本地 Ollama 除外），按各家标准计费。预置的模型名可能随厂商更新而过时，用「获取模型列表」拉取最新列表即可。
 
 ## 许可协议
 
