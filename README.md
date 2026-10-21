@@ -57,7 +57,24 @@ open build/LoadLens.app
 5. 面板底部点「让 AI 帮我深入分析」，AI 助手直接在面板旁边展开（右侧放得下就在右侧，否则在左侧），并自动分析一次当前状态。Return 发送，Shift+Return 换行。
 6. AI 助手顶部的「AI 实时读取」会随面板一起刷新，每次提问都带上最新数据；需要更大的窗口时，点右上角的窗口图标改为独立窗口。
 
-每次提问会把当前的 CPU、内存、温度、占用最高的应用名和本机规则建议作为上下文，发送到你选择的服务。不会发送文件内容。窗口顶部「AI 能看到」一栏可以查看完整内容。对话只保存在内存里，退出应用即清空。
+### AI 能自己查数据（工具调用）
+
+AI 不只看一份摘要：它可以按需调用只读工具深入分析，回答里会显示它查了什么（例如「✓ 查看「应用缓存」明细」）。
+
+| 工具 | 能查到什么 |
+| --- | --- |
+| `list_apps` | 所有应用按 CPU / 内存 / 磁盘读写排序 |
+| `get_app_processes` | 某个应用下的每个进程 |
+| `get_memory_details` | 内存、压缩内存、交换区、占内存最多的应用 |
+| `get_disk_details` | 所有磁盘容量、健康、快照、读写速度 |
+| `get_space_overview` | 可清理空间总览（没分析过会自动分析） |
+| `analyze_folder` | 某个目录里每个子文件夹的大小、属于哪个应用、应用是否还安装 / 正在运行、最近修改时间 |
+| `get_history` | 最近几分钟 CPU 或硬盘读写的趋势 |
+| `get_system_info` | 型号、芯片、macOS 版本、运行时间等 |
+
+所有工具都是只读的：AI 不能删除文件或结束进程，只会告诉你在哪里操作。「硬盘」页每一项旁边的 ✨、占用排行「⋯」菜单里的「问 AI」可以一键让 AI 分析那一项。OpenAI 兼容接口和 Anthropic 接口都支持；不支持工具调用的模型会自动退回普通对话。
+
+每次提问会把当前的 CPU、内存、温度、占用最高的应用名和本机规则建议作为上下文，发送到你选择的服务。AI 调用工具时，会额外发送它查询到的结果（应用名、进程名、文件夹名和大小）。不会发送文件内容。窗口顶部「AI 实时读取」一栏可以查看完整的快照内容。对话只保存在内存里，退出应用即清空。
 
 使用 Anthropic 官方接口和 Claude Opus / Sonnet 5.5 等模型时，会自动开启服务端 `fallbacks`：如果请求被安全策略拒绝，由服务端换用其他模型重试。
 
@@ -127,7 +144,8 @@ Sources/LoginItem.swift  开机自启（LaunchAgent）
 Sources/Notifier.swift   高负载系统通知
 Sources/Keychain.swift   API Key 的钥匙串存取（每个服务一条）
 Sources/AIProviders.swift    预置模型服务、配置存储
-Sources/LLMClient.swift      通用流式客户端（OpenAI 兼容 / Anthropic）
+Sources/LLMClient.swift      通用流式客户端与工具调用循环（OpenAI 兼容 / Anthropic）
+Sources/AITools.swift        AI 可调用的只读数据工具
 Sources/AISettingsView.swift AI 模型设置窗口
 Sources/Theme.swift      配色、卡片与通用控件
 Sources/MarkdownText.swift   AI 回复的 Markdown 渲染

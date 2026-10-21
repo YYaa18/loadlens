@@ -602,6 +602,11 @@ struct AppRow: View {
 
     @ViewBuilder
     private var menuItems: some View {
+        Button("问 AI：分析「\(app.name)」") {
+            AIDock.shared.ask("帮我分析「\(app.name)」现在的资源占用：先用 get_app_processes 看它有哪些进程，必要时再看内存或硬盘明细。告诉我占用是否正常、主要是哪个进程、需不需要处理、怎么处理。",
+                              display: "分析「\(app.name)」的占用")
+        }
+        Divider()
         if app.bundlePath != nil {
             Button("退出 \(app.name)") { monitor.quit(app) }
             Button("在访达中显示") { monitor.reveal(app) }

@@ -65,6 +65,14 @@ final class AIDock: ObservableObject {
         settle()
     }
 
+    /// Opens the AI pane next to the panel and asks a question about something on screen.
+    func ask(_ prompt: String, display: String) {
+        open()
+        let chat = AIChat.shared
+        if chat.isStreaming { chat.cancel() }
+        chat.send(prompt, display: display)
+    }
+
     /// The menu bar panel went away; start fresh next time.
     func panelClosed() {
         isOpen = false

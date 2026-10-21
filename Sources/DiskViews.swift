@@ -152,11 +152,14 @@ struct DiskPageView: View {
                 .frame(height: 40)
 
             Divider().opacity(0.5)
-            if busy.isEmpty {
-                Text("目前没有应用在明显读写硬盘")
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(.secondary)
-            } else {
+            // Fixed height so the cards below don't jump as apps come and go.
+            Group {
+                if busy.isEmpty {
+                    Text("目前没有应用在明显读写硬盘")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(.secondary)
+                        .frame(maxHeight: .infinity, alignment: .center)
+                } else {
                 VStack(spacing: 6) {
                     ForEach(Array(busy)) { app in
                         HStack(spacing: 8) {
@@ -174,7 +177,9 @@ struct DiskPageView: View {
                         .monospacedDigit()
                     }
                 }
+                }
             }
+            .frame(height: 66, alignment: .top)
         }
         .card()
     }
@@ -224,6 +229,11 @@ struct DiskPageView: View {
         .card()
     }
 
+    private func askAI(about item: SpaceItem) {
+        AIDock.shared.ask("帮我详细分析「\(item.title)」（\(formatSize(item.bytes))）里具体是哪些应用或文件占用的。请调用 analyze_folder 查看明细，告诉我每一大项是什么、哪些可以放心清理、哪些要谨慎、怎么清理。",
+                          display: "分析「\(item.title)」里都有什么")
+    }
+
     private func eject(_ volume: VolumeInfo) {
         do {
             try NSWorkspace.shared.unmountAndEjectDevice(at: URL(fileURLWithPath: volume.path))
@@ -262,13 +272,22 @@ struct DiskPageView: View {
             } else {
                 VStack(spacing: 0) {
                     ForEach(scanner.items.filter { $0.state != .missing }) { item in
-                        SpaceRow(item: item) { scanner.reveal(item) }
+                        SpaceRow(item: item,
+                                 onReveal: { scanner.reveal(item) },
+                                 onAsk: { askAI(about: item) })
                     }
                 }
                 if !scanner.isScanning {
-                    Text("合计约 \(formatSize(scanner.total))，点右侧文件夹图标在访达中查看后自行处理")
+                    Text("合计约 \(formatSize(scanner.total))。点 ✨ 让 AI 分析某一项，点文件夹图标在访达中查看")
                         .font(.system(size: 10.5))
                         .foregroundStyle(.tertiary)
+                    Button {
+                        AIDock.shared.ask("请先查看可清理空间总览，再对占用最大的两三项查看明细，告诉我：分别是哪些应用或文件占的、哪些可以放心清理、哪些要谨慎，以及具体怎么清理。按能释放的空间从大到小排列。",
+                                          display: "根据可清理空间给我清理建议")
+                    } label: {
+                        Label("让 AI 给出清理建议", systemImage: "sparkles")
+                    }
+                    .buttonStyle(GradientButtonStyle())
                 }
             }
 
@@ -353,6 +372,7 @@ private struct VolumeRow: View {
 private struct SpaceRow: View {
     let item: SpaceItem
     let onReveal: () -> Void
+    let onAsk: () -> Void
     @State private var hovering = false
 
     var body: some View {
@@ -386,6 +406,16 @@ private struct SpaceRow: View {
                     .foregroundStyle(.tertiary)
             case .missing:
                 EmptyView()
+            }
+            if case .done(let bytes) = item.state, bytes > 0 {
+                Button(action: onAsk) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Brand.orange)
+                }
+                .buttonStyle(.borderless)
+                .opacity(hovering ? 1 : 0.45)
+                .help("让 AI 分析这里面都有什么、能不能清理")
             }
             Button(action: onReveal) {
                 Image(systemName: "folder")

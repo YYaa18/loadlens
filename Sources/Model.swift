@@ -187,6 +187,19 @@ func aggregate(_ samples: [ProcessSample], excluding: Set<pid_t>) -> [AppUsage] 
         buckets[key] = bucket
     }
 
+    // A process whose path couldn't be read lands in "proc:<name>"; fold it into the app of the same name.
+    for (key, bucket) in buckets where key.hasPrefix("proc:") {
+        let appKey = "app:" + bucket.name
+        guard var app = buckets[appKey] else { continue }
+        app.cpu += bucket.cpu
+        app.rss += bucket.rss
+        app.count += bucket.count
+        app.diskRead += bucket.diskRead
+        app.diskWrite += bucket.diskWrite
+        buckets[appKey] = app
+        buckets[key] = nil
+    }
+
     return buckets.map { key, bucket in
         AppUsage(id: key,
                  name: bucket.name,

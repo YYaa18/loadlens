@@ -1,5 +1,11 @@
 import Foundation
 
+struct ToolStep: Identifiable, Equatable {
+    let id: String
+    let title: String
+    var done = false
+}
+
 struct ChatMessage: Identifiable {
     enum Role {
         case user
@@ -12,6 +18,8 @@ struct ChatMessage: Identifiable {
     var text: String
     /// Optional friendlier text shown in the bubble instead of `text`.
     var display: String? = nil
+    /// Lookups the assistant ran while answering.
+    var steps: [ToolStep] = []
     let date = Date()
 
     var shownText: String { display ?? text }
@@ -39,15 +47,16 @@ final class AIChat: ObservableObject {
     private var lastRequest: (prompt: String, display: String?)?
 
     private let systemPrompt = """
-    你是一个 macOS 性能诊断助手，服务对象是不懂技术的普通用户。你会收到本机实时快照。
+    你是一个 macOS 性能诊断助手，服务对象是不懂技术的普通用户。你会收到本机实时快照（摘要）。
+    你还可以调用只读工具获取更细的数据：应用和进程明细、内存、硬盘、可清理空间、任意目录里每个子文件夹的大小和所属应用、历史趋势、系统信息。
     要求：
-    1. 先给结论，再给原因和建议；
-    2. 用中文，少用术语；必须用术语时解释一句；
-    3. 只根据快照和用户问题回答，不要编造快照中没有的数据；
-    4. 建议要具体、可执行，最多 3 条；
-    5. 不要建议危险命令、安装来源不明的软件或关闭系统安全功能；
-    6. 除非用户要求展开，回答控制在 250 字以内；
-    7. 可以用简短的 Markdown：**加粗**关键结论，用 "- " 或 "1. " 列出建议，不要用表格和标题。
+    1. 用户问到快照里没有的细节时（例如“缓存里都是哪些应用”“这个应用为什么占内存”），先调用工具查清楚再回答，不要说做不到；
+    2. 先给结论，再给原因和建议；用中文，少用术语，必须用术语时解释一句；
+    3. 只根据快照、工具结果和用户问题回答，不要编造数据；
+    4. 建议要具体、可执行。涉及清理时说清楚：哪些可以放心删（缓存会自动重建、已卸载应用的残留）、哪些要谨慎（正在运行的应用先退出、下载里的文件要先确认），以及在哪里操作；
+    5. 你不能删除文件或结束进程，只能告诉用户怎么做；不要建议危险命令、安装来源不明的软件或关闭系统安全功能；
+    6. 普通问题 250 字以内；做明细分析时可以更长，按占用从大到小列出要点；
+    7. 可以用简短的 Markdown：**加粗**关键结论，用 "- " 或 "1. " 列出要点，不要用表格和标题。
     """
 
     private init() {}
@@ -126,11 +135,16 @@ final class AIChat: ObservableObject {
         task = Task { [weak self] in
             guard let self else { return }
             do {
-                try await client.stream(system: system, messages: apiMessages, endpoint: endpoint) { delta in
+                try await client.runAgent(system: system,
+                                          messages: apiMessages,
+                                          endpoint: endpoint,
+                                          tools: AITools.specs,
+                                          execute: { name, arguments in await AITools.execute(name, arguments) },
+                                          onEvent: { event in
                     DispatchQueue.main.async { [weak self] in
-                        self?.appendDelta(delta)
+                        self?.handle(event)
                     }
-                }
+                })
                 DispatchQueue.main.async { [weak self] in
                     self?.finishStreaming()
                 }
@@ -164,6 +178,30 @@ final class AIChat: ObservableObject {
     }
 
     // MARK: - Streaming
+
+    private func handle(_ event: LLMClient.AgentEvent) {
+        switch event {
+        case .text(let delta):
+            appendDelta(delta)
+        case .toolStarted(let id, let name, let arguments):
+            flushPending()
+            guard let index = currentIndex else { return }
+            // Text written before a lookup ("我先查一下") gets separated from the final answer.
+            if !messages[index].text.isEmpty, !messages[index].text.hasSuffix("\n") {
+                messages[index].text += "\n\n"
+            }
+            messages[index].steps.append(ToolStep(id: id, title: AITools.label(name, arguments)))
+        case .toolFinished(let id):
+            guard let index = currentIndex,
+                  let step = messages[index].steps.firstIndex(where: { $0.id == id }) else { return }
+            messages[index].steps[step].done = true
+        }
+    }
+
+    private var currentIndex: Int? {
+        guard let id = currentAssistantID else { return nil }
+        return messages.firstIndex { $0.id == id }
+    }
 
     private func appendDelta(_ delta: String) {
         pending += delta

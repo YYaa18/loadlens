@@ -28,6 +28,25 @@ if CommandLine.arguments.contains("--diagnose") {
     exit(0)
 }
 
+// Developer check: run one AI tool against live data, e.g. --tool-test analyze_folder '{"target":"caches"}'
+if let index = CommandLine.arguments.firstIndex(of: "--tool-test") {
+    let args = CommandLine.arguments
+    let name = args.count > index + 1 ? args[index + 1] : "list_apps"
+    let raw = args.count > index + 2 ? args[index + 2] : "{}"
+    let arguments = (try? JSONSerialization.jsonObject(with: Data(raw.utf8))) as? [String: Any] ?? [:]
+    MainActor.assumeIsolated {
+        _ = NSApplication.shared
+        Monitor.shared.start()
+        Monitor.shared.panelDidOpen()
+        RunLoop.main.run(until: Date().addingTimeInterval(7))
+        var output: String?
+        Task { output = await AITools.execute(name, arguments) }
+        while output == nil { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+        print(output ?? "")
+    }
+    exit(0)
+}
+
 if CommandLine.arguments.contains("--settings-preview") {
     MainActor.assumeIsolated {
         NSApplication.shared.setActivationPolicy(.regular)

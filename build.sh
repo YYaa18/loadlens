@@ -19,6 +19,7 @@ xcrun swiftc -O -swift-version 5 \
     "$ROOT/Sources/Keychain.swift" \
     "$ROOT/Sources/AIProviders.swift" \
     "$ROOT/Sources/LLMClient.swift" \
+    "$ROOT/Sources/AITools.swift" \
     "$ROOT/Sources/AISettingsView.swift" \
     "$ROOT/Sources/Theme.swift" \
     "$ROOT/Sources/MarkdownText.swift" \

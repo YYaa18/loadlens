@@ -16,7 +16,7 @@ struct AIChatView: View {
         ("fan", "为什么风扇一直在响？"),
         ("xmark.app", "现在最该关掉哪个应用？"),
         ("memorychip", "内存还够用吗？要不要加内存？"),
-        ("internaldrive", "硬盘空间怎么清理？")
+        ("internaldrive", "应用缓存里都是哪些应用？能清理吗？")
     ]
 
     private let followUps = ["具体该怎么操作？", "还有其他可能的原因吗？", "需要重启电脑吗？"]
@@ -449,9 +449,14 @@ private struct AssistantMessage: View {
         HStack(alignment: .top, spacing: 10) {
             AIAvatar(size: 24)
             VStack(alignment: .leading, spacing: 8) {
+                if !message.steps.isEmpty {
+                    ToolStepsView(steps: message.steps)
+                }
                 if message.text.isEmpty {
-                    TypingIndicator()
-                        .padding(.top, 6)
+                    if message.steps.allSatisfy(\.done) {
+                        TypingIndicator()
+                            .padding(.top, message.steps.isEmpty ? 6 : 0)
+                    }
                 } else {
                     MarkdownText(text: message.text)
                 }
@@ -631,5 +636,38 @@ struct FlowLayout: Layout {
             rows[rows.count - 1] = row
         }
         return rows
+    }
+}
+
+/// The lookups the AI ran for one answer, e.g. "查看「应用缓存」明细 ✓".
+private struct ToolStepsView: View {
+    let steps: [ToolStep]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(steps) { step in
+                HStack(spacing: 6) {
+                    if step.done {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(LoadLevel.calm.tint)
+                    } else {
+                        ProgressView().controlSize(.mini)
+                    }
+                    Text(step.title)
+                        .foregroundStyle(step.done ? .secondary : .primary)
+                }
+                .font(.system(size: 11.5))
+            }
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.primary.opacity(0.045))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
+        )
     }
 }

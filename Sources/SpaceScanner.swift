@@ -1,6 +1,15 @@
 import Foundation
 import AppKit
 
+/// A direct child of a scanned folder.
+struct FolderChild {
+    let name: String
+    let path: String
+    var bytes: UInt64
+    var modified: Date?
+    var isDirectory: Bool
+}
+
 /// One place that commonly grows large and can usually be cleaned up.
 struct SpaceItem: Identifiable {
     enum State: Equatable {
@@ -18,6 +27,8 @@ struct SpaceItem: Identifiable {
     let symbol: String
     let paths: [String]
     var state: State = .pending
+    /// First-level contents, biggest first (filled after a finished scan).
+    var children: [FolderChild] = []
 
     var bytes: UInt64 {
         if case .done(let value) = state { return value }
@@ -56,10 +67,10 @@ final class SpaceScanner: ObservableObject {
                 if self.cancelled { limit.signal(); break }
                 group.enter()
                 DispatchQueue.global(qos: .utility).async {
-                    let state = Self.measure(paths,
-                                             progress: { partial in self.update(id, .counting(partial)) },
-                                             cancelled: { self.cancelled })
-                    self.update(id, state)
+                    let result = Self.measure(paths,
+                                              progress: { partial in self.update(id, .counting(partial)) },
+                                              cancelled: { self.cancelled })
+                    self.update(id, result.state, children: result.children)
                     limit.signal()
                     group.leave()
                 }
@@ -81,12 +92,23 @@ final class SpaceScanner: ObservableObject {
         cancelled = true
     }
 
-    private func update(_ id: String, _ state: SpaceItem.State) {
+    private func update(_ id: String, _ state: SpaceItem.State, children: [FolderChild]? = nil) {
         DispatchQueue.main.async {
             guard let index = self.items.firstIndex(where: { $0.id == id }) else { return }
             // Never let a late progress update overwrite a final result.
             if case .done = self.items[index].state, case .counting = state { return }
             self.items[index].state = state
+            if let children { self.items[index].children = children }
+        }
+    }
+
+    /// Waits for a running scan to finish (used by the AI tools).
+    func waitUntilIdle(timeout: TimeInterval) async {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            let scanning = await MainActor.run { isScanning }
+            if !scanning { return }
+            try? await Task.sleep(nanoseconds: 300_000_000)
         }
     }
 
@@ -113,11 +135,12 @@ final class SpaceScanner: ObservableObject {
 
     private static func measure(_ paths: [String],
                                 progress: (UInt64) -> Void,
-                                cancelled: () -> Bool) -> SpaceItem.State {
+                                cancelled: () -> Bool) -> (state: SpaceItem.State, children: [FolderChild]) {
         let fm = FileManager.default
         var total: UInt64 = 0
         var found = false
         var denied = false
+        var children: [FolderChild] = []
 
         for path in paths {
             var isDirectory: ObjCBool = false
@@ -133,27 +156,56 @@ final class SpaceScanner: ObservableObject {
                 continue
             }
             let base = total
-            total = base + walk(path, progress: { progress(base + $0) }, cancelled: cancelled)
-            if cancelled() { return .done(total) }
+            let result = breakdown(path, progress: { progress(base + $0) }, cancelled: cancelled)
+            total = base + result.total
+            children += result.children
+            if cancelled() { break }
         }
-        if !found { return .missing }
-        if denied && total == 0 { return .denied }
-        return .done(total)
+        children.sort { $0.bytes > $1.bytes }
+        if !found { return (.missing, []) }
+        if denied && total == 0 { return (.denied, []) }
+        return (.done(total), children)
     }
 
-    /// Allocated bytes under a folder, using fts like `du` (much lighter than URL enumeration).
-    private static func walk(_ path: String, progress: (UInt64) -> Void, cancelled: () -> Bool) -> UInt64 {
-        guard let cPath = strdup(path) else { return 0 }
+    /// Allocated bytes under a folder plus a per-child breakdown, using fts like `du`
+    /// (much lighter than URL enumeration). Reads sizes only.
+    static func breakdown(_ path: String,
+                          progress: (UInt64) -> Void,
+                          cancelled: () -> Bool) -> (total: UInt64, children: [FolderChild]) {
+        guard let cPath = strdup(path) else { return (0, []) }
         defer { free(cPath) }
         var roots: [UnsafeMutablePointer<CChar>?] = [cPath, nil]
-        guard let fts = fts_open(&roots, FTS_PHYSICAL | FTS_NOCHDIR | FTS_XDEV, nil) else { return 0 }
+        guard let fts = fts_open(&roots, FTS_PHYSICAL | FTS_NOCHDIR | FTS_XDEV, nil) else { return (0, []) }
         defer { fts_close(fts) }
 
         var total: UInt64 = 0
         var visited = 0
+        var children: [FolderChild] = []
+        var current: Int?
+
         while let entry = fts_read(fts) {
-            if Int32(entry.pointee.fts_info) == FTS_F, let stat = entry.pointee.fts_statp {
-                total += UInt64(max(stat.pointee.st_blocks, 0)) * 512
+            let info = Int32(entry.pointee.fts_info)
+            let level = Int(entry.pointee.fts_level)
+            let stat = entry.pointee.fts_statp
+
+            if level == 1, info == FTS_D || info == FTS_F || info == FTS_SL {
+                let childPath = String(cString: entry.pointee.fts_path)
+                var modified: Date?
+                if let stat {
+                    let spec = stat.pointee.st_mtimespec
+                    modified = Date(timeIntervalSince1970: TimeInterval(spec.tv_sec))
+                }
+                children.append(FolderChild(name: (childPath as NSString).lastPathComponent,
+                                            path: childPath,
+                                            bytes: 0,
+                                            modified: modified,
+                                            isDirectory: info == FTS_D))
+                current = children.count - 1
+            }
+            if info == FTS_F, let stat {
+                let size = UInt64(max(stat.pointee.st_blocks, 0)) * 512
+                total += size
+                if let current, level >= 1 { children[current].bytes += size }
             }
             visited += 1
             if visited % 20_000 == 0 {
@@ -161,7 +213,8 @@ final class SpaceScanner: ObservableObject {
                 progress(total)
             }
         }
-        return total
+        children.sort { $0.bytes > $1.bytes }
+        return (total, children)
     }
 
     private static func allocatedSize(_ url: URL) -> UInt64 {

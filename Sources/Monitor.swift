@@ -10,6 +10,8 @@ final class Monitor: ObservableObject {
     @Published private(set) var menuSymbol = "gauge"
     @Published private(set) var cpuHistory: [CPUPoint] = []
     @Published private(set) var diskHistory: [DiskPoint] = []
+    /// Raw per-process samples from the latest full scan (for the AI's detail lookups).
+    private(set) var processSamples: [ProcessSample] = []
     @Published private(set) var settingsMessage: String?
 
     @Published var launchAtLogin = LoginItem.isEnabled {
@@ -218,6 +220,7 @@ final class Monitor: ObservableObject {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.snapshot = snap
+            if full { self.processSamples = samples.filter { $0.pid != self.ownPID } }
             self.diagnosis = diag
             let percent = "\(Int(cpu.rounded()))%"
             self.menuTitle = percent

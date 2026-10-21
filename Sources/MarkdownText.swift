@@ -59,12 +59,32 @@ struct MarkdownText: View {
     }
 
     private func inline(_ line: String) -> some View {
-        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        let attributed = (try? AttributedString(markdown: line, options: options)) ?? AttributedString(line)
-        return Text(attributed)
+        Text(Self.attributed(line))
             .font(.system(size: fontSize))
             .lineSpacing(3)
             .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Inline Markdown, with **bold** handled by hand: CommonMark won't close `**` that follows
+    /// punctuation and is directly followed by a letter (e.g. "**结论。**你的…"), which is
+    /// extremely common in Chinese text.
+    static func attributed(_ line: String) -> AttributedString {
+        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        func parse(_ text: String) -> AttributedString {
+            (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
+        }
+        let parts = line.components(separatedBy: "**")
+        // An odd number of parts means every ** has a partner.
+        guard parts.count >= 3, parts.count % 2 == 1 else { return parse(line) }
+        var result = AttributedString()
+        for (index, part) in parts.enumerated() where !part.isEmpty {
+            var piece = parse(part)
+            if index % 2 == 1 {
+                piece.inlinePresentationIntent = (piece.inlinePresentationIntent ?? []).union(.stronglyEmphasized)
+            }
+            result += piece
+        }
+        return result
     }
 
     private var blocks: [Block] {
