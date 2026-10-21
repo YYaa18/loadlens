@@ -1,12 +1,18 @@
 import Foundation
 import Security
 
+/// Stores one secret per provider in the login keychain.
 enum Keychain {
-    private static let service = "local.loadlens.deepseek"
-    private static let account = "api-key"
+    /// Test runs can point at a separate service so real keys are never touched.
+    static let service = "local.loadlens.ai"
+        + (ProcessInfo.processInfo.environment["LOADLENS_SETTINGS_SUITE"].map { "." + $0 } ?? "")
+
+    /// Location used before multi-provider support (DeepSeek only).
+    static let legacyService = "local.loadlens.deepseek"
+    static let legacyAccount = "api-key"
 
     @discardableResult
-    static func save(_ value: String) -> Bool {
+    static func save(_ value: String, account: String, service: String = service) -> Bool {
         guard let data = value.data(using: .utf8) else { return false }
         let base: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -21,7 +27,7 @@ enum Keychain {
         return SecItemAdd(attributes as CFDictionary, nil) == errSecSuccess
     }
 
-    static func load() -> String? {
+    static func load(account: String, service: String = service) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -39,7 +45,7 @@ enum Keychain {
         return value
     }
 
-    static func delete() {
+    static func delete(account: String, service: String = service) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

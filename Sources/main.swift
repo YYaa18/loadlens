@@ -1,11 +1,12 @@
 import Foundation
+import AppKit
 import Darwin
 
 if CommandLine.arguments.contains("--keychain-test") {
-    let saved = Keychain.save("loadlens-test-key")
-    let loaded = Keychain.load()
-    Keychain.delete()
-    let deleted = Keychain.load() == nil
+    let saved = Keychain.save("loadlens-test-key", account: "selftest")
+    let loaded = Keychain.load(account: "selftest")
+    Keychain.delete(account: "selftest")
+    let deleted = Keychain.load(account: "selftest") == nil
     print("keychain save=\(saved) load=\(loaded == "loadlens-test-key") delete=\(deleted)")
     exit(0)
 }
@@ -25,6 +26,14 @@ if CommandLine.arguments.contains("--login-item-off") {
 if CommandLine.arguments.contains("--diagnose") {
     runDiagnosticReport()
     exit(0)
+}
+
+if CommandLine.arguments.contains("--settings-preview") {
+    MainActor.assumeIsolated {
+        NSApplication.shared.setActivationPolicy(.regular)
+        AISettingsWindowController.shared.show()
+        NSApplication.shared.run()
+    }
 }
 
 if let index = CommandLine.arguments.firstIndex(of: "--preview-window") {

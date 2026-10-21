@@ -4,6 +4,7 @@ import AppKit
 struct AIChatView: View {
     @ObservedObject var chat: AIChat
     @ObservedObject private var monitor = Monitor.shared
+    @ObservedObject private var store = AIConfigStore.shared
     @FocusState private var inputFocused: Bool
     @State private var showContext = false
 
@@ -20,8 +21,8 @@ struct AIChatView: View {
         VStack(spacing: 0) {
             header
             Divider().opacity(0.6)
-            if chat.settingsOpen {
-                KeySetupView(chat: chat)
+            if !store.isReady && chat.messages.isEmpty {
+                setupPrompt
             } else {
                 contextStrip
                 conversation
@@ -31,9 +32,9 @@ struct AIChatView: View {
         .frame(minWidth: 380, minHeight: 460)
         .background(Color(nsColor: .windowBackgroundColor))
         .ignoresSafeArea(.container, edges: .top)
-        .onAppear {
-            chat.refreshKeyState()
-            inputFocused = true
+        .onAppear { inputFocused = true }
+        .onChange(of: store.isReady) { ready in
+            if ready { chat.startIfEmpty() }
         }
     }
 
@@ -45,33 +46,88 @@ struct AIChatView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text("AI 诊断助手")
                     .font(.system(size: 13, weight: .semibold))
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(chat.hasKey ? LoadLevel.calm.tint : Color.secondary)
-                        .frame(width: 6, height: 6)
-                    Text(chat.hasKey ? "DeepSeek · 已连接" : "DeepSeek · 未配置")
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(.secondary)
-                }
+                modelSwitcher
             }
             Spacer()
-            if !chat.settingsOpen {
-                IconButton(symbol: "square.and.pencil", help: "新对话") { chat.clear() }
-                    .disabled(chat.messages.isEmpty && !chat.isStreaming)
-                    .opacity(chat.messages.isEmpty ? 0.4 : 1)
-            }
-            IconButton(symbol: chat.settingsOpen ? "bubble.left.and.bubble.right" : "key",
-                       help: chat.settingsOpen ? "返回对话" : "API Key 设置") {
-                if chat.settingsOpen {
-                    if chat.hasKey { chat.settingsOpen = false }
-                } else {
-                    chat.settingsOpen = true
-                }
+            IconButton(symbol: "square.and.pencil", help: "新对话") { chat.clear() }
+                .disabled(chat.messages.isEmpty && !chat.isStreaming)
+                .opacity(chat.messages.isEmpty ? 0.4 : 1)
+            IconButton(symbol: "gearshape", help: "AI 模型设置") {
+                AISettingsWindowController.shared.show()
             }
         }
         .padding(.leading, 90)   // clear the traffic lights
         .padding(.trailing, 12)
         .frame(height: 52)
+    }
+
+    private var modelSwitcher: some View {
+        Menu {
+            ForEach(store.configuredProviders) { preset in
+                Section(preset.name) {
+                    ForEach(store.models(for: preset.id), id: \.self) { model in
+                        Button {
+                            store.activate(preset.id, model: model)
+                        } label: {
+                            if store.settings.activeProvider == preset.id && store.config(for: preset.id).model == model {
+                                Label(model, systemImage: "checkmark")
+                            } else {
+                                Text(model)
+                            }
+                        }
+                    }
+                }
+            }
+            Divider()
+            Button("管理模型服务…") { AISettingsWindowController.shared.show() }
+        } label: {
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(store.isReady ? LoadLevel.calm.tint : Color.secondary)
+                    .frame(width: 6, height: 6)
+                Text(store.isReady ? store.displayName : "未配置模型")
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+            }
+            .font(.system(size: 10.5))
+            .foregroundStyle(.secondary)
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("切换模型")
+    }
+
+    // MARK: Setup prompt
+
+    private var setupPrompt: some View {
+        VStack(spacing: 14) {
+            Spacer()
+            ZStack {
+                Circle().fill(Brand.gradient)
+                Image(systemName: "cpu")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            .frame(width: 50, height: 50)
+            Text("先选一个 AI 模型")
+                .font(.system(size: 16, weight: .semibold))
+            Text("支持 DeepSeek、OpenAI、Claude、Gemini、Kimi、通义千问、智谱等，也可以连接本地 Ollama 或任意 OpenAI 兼容接口。")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 30)
+            Button { AISettingsWindowController.shared.show() } label: {
+                Label("打开 AI 模型设置", systemImage: "gearshape")
+            }
+            .buttonStyle(GradientButtonStyle())
+            .frame(maxWidth: 220)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: Context strip
@@ -121,7 +177,7 @@ struct AIChatView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("每次提问会附带这份实时快照", systemImage: "lock.shield")
                 .font(.system(size: 12, weight: .semibold))
-            Text("只包含系统指标和应用名，不包含任何文件内容。发送到 api.deepseek.com。")
+            Text("只包含系统指标和应用名，不包含任何文件内容。发送到 \(store.endpoint().host)（\(store.activePreset.name)）。")
                 .font(.system(size: 10.5))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -342,7 +398,7 @@ struct AIChatView: View {
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
             if chat.errorNeedsKey {
-                Button("更换 Key") { chat.settingsOpen = true }
+                Button("打开设置") { AISettingsWindowController.shared.show() }
                     .controlSize(.small)
             } else if chat.canRetry {
                 Button("重试") { chat.retry() }
@@ -513,118 +569,6 @@ private struct TypingIndicator: View {
         .onAppear {
             // Start after layout settles so the repeat doesn't replay the bubble's insertion.
             DispatchQueue.main.async { phase = true }
-        }
-    }
-}
-
-// MARK: - API key setup
-
-private struct KeySetupView: View {
-    @ObservedObject var chat: AIChat
-    @FocusState private var focused: Bool
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 10) {
-                    ZStack {
-                        Circle().fill(Brand.gradient)
-                        Image(systemName: "key.fill")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
-                    .frame(width: 42, height: 42)
-                    Text(chat.hasKey ? "更换 DeepSeek API Key" : "连接 DeepSeek，开启 AI 分析")
-                        .font(.system(size: 16, weight: .semibold))
-                    Text("只需要配置一次。Key 保存在 macOS 钥匙串里，不写入任何文件，也不会上传到除 DeepSeek 以外的地方。")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                VStack(alignment: .leading, spacing: 12) {
-                    step(1, "在 DeepSeek 开放平台创建一个 API Key") {
-                        Button {
-                            if let url = URL(string: "https://platform.deepseek.com/api_keys") {
-                                NSWorkspace.shared.open(url)
-                            }
-                        } label: {
-                            Label("打开 platform.deepseek.com", systemImage: "arrow.up.right.square")
-                                .font(.system(size: 11.5))
-                        }
-                        .buttonStyle(.link)
-                    }
-                    step(2, "把 Key 粘贴到这里") {
-                        SecureField("sk-…", text: $chat.keyDraft)
-                            .textFieldStyle(.plain)
-                            .font(.system(size: 13, design: .monospaced))
-                            .focused($focused)
-                            .onSubmit { chat.saveKey() }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(Color(nsColor: .textBackgroundColor))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .strokeBorder(focused ? Color.accentColor.opacity(0.6) : Color.primary.opacity(0.15),
-                                                  lineWidth: focused ? 1.2 : 0.8)
-                            )
-                    }
-                }
-                .card(padding: 14)
-
-                Button { chat.saveKey() } label: {
-                    Label("保存并开始使用", systemImage: "checkmark")
-                }
-                .buttonStyle(GradientButtonStyle())
-                .disabled(chat.keyDraft.trimmingCharacters(in: .whitespaces).isEmpty)
-                .opacity(chat.keyDraft.trimmingCharacters(in: .whitespaces).isEmpty ? 0.55 : 1)
-
-                if let note = chat.keyNote {
-                    Text(note)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
-
-                if chat.hasKey {
-                    HStack {
-                        Button("返回对话") { chat.settingsOpen = false }
-                            .buttonStyle(.link)
-                        Spacer()
-                        Button("删除已保存的 Key", role: .destructive) { chat.removeKey() }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(LoadLevel.hot.tint)
-                    }
-                    .font(.system(size: 11.5))
-                }
-
-                HStack(alignment: .top, spacing: 6) {
-                    Image(systemName: "lock.shield")
-                    Text("分析时只发送 CPU、内存、温度、应用名和本机建议到 api.deepseek.com，按 DeepSeek 的标准计费。对话只保存在内存里，退出即清空。")
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .font(.system(size: 10.5))
-                .foregroundStyle(.tertiary)
-            }
-            .padding(20)
-        }
-        .onAppear { focused = true }
-    }
-
-    private func step<Content: View>(_ number: Int, _ title: String, @ViewBuilder content: () -> Content) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Text("\(number)")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .frame(width: 20, height: 20)
-                .background(Circle().fill(Brand.orange))
-            VStack(alignment: .leading, spacing: 7) {
-                Text(title)
-                    .font(.system(size: 12.5, weight: .medium))
-                content()
-            }
         }
     }
 }

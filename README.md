@@ -12,7 +12,7 @@
 - 根据当前情况生成的「诊断建议」，以及一键进入 AI 深入分析
 - 右上角齿轮菜单：开机自启、高负载通知、AI 设置、复制诊断报告、退出
 - 持续高负载 2 分钟时弹系统通知（30 分钟内不重复打扰）
-- 让 DeepSeek 结合当前快照做分析，也可以继续追问（API Key 存系统钥匙串）
+- 让 AI 结合当前快照做分析，也可以继续追问；支持 DeepSeek、OpenAI、Claude、Gemini、国产大模型、本地 Ollama 和自定义接口
 - 一键复制诊断信息，方便发给别人求助
 
 ## 运行
@@ -36,14 +36,24 @@ open build/LoadLens.app
 
 ## AI 分析
 
-1. 打开菜单栏面板，点底部的「让 AI 帮我深入分析」。AI 窗口会在面板原来的位置打开，并自动分析一次当前状态。
-2. 第一次使用需要填一个 DeepSeek API Key，可以在 [platform.deepseek.com](https://platform.deepseek.com/api_keys) 获取。Key 只保存在 macOS 系统钥匙串。
-3. 继续追问，或点回答下方的快捷问题。Return 发送，Shift+Return 换行；回答可以复制、重新生成。
-4. 窗口顶部的「AI 能看到」一栏显示会发送的数据，点「详情」查看完整内容。
+支持主流大模型服务，也可以接本地模型或任意兼容接口：
 
-每次分析会把当前的 CPU、内存、温度、占用最高的应用名和本机规则建议作为上下文，发送到 `api.deepseek.com`（模型 `deepseek-chat`，流式返回）。不会发送文件内容。对话只保存在内存里，退出应用即清空。
+| 服务 | 接口格式 |
+| --- | --- |
+| DeepSeek、OpenAI、Google Gemini、Kimi、通义千问、智谱 GLM、硅基流动、OpenRouter | OpenAI 兼容（`/chat/completions`） |
+| Anthropic Claude | Anthropic 原生 Messages 接口（`/v1/messages`） |
+| Ollama（本地） | OpenAI 兼容，无需 Key |
+| 自定义 | 可选 OpenAI 兼容或 Anthropic 格式，适合公司网关、LM Studio、vLLM 等 |
 
-如果提示「API Key 无效」，点错误提示里的「更换 Key」或窗口右上角的钥匙图标；余额不足、网络错误等会在输入框上方提示，并可一键重试。
+1. 打开菜单栏面板 → 右上角齿轮 →「AI 模型设置…」（或 AI 窗口右上角齿轮）。
+2. 左侧选择服务，填 API Key（只存 macOS 钥匙串），需要时修改接口地址。
+3. 点「获取模型列表」从服务端拉取可用模型，或手动添加模型名；点「测试连接」确认可用。
+4. 点「设为当前模型」。之后在 AI 窗口顶部的模型名上可以随时切换已配置的服务和模型。
+5. 面板底部点「让 AI 帮我深入分析」，AI 窗口在面板位置打开并自动分析一次当前状态。Return 发送，Shift+Return 换行。
+
+每次提问会把当前的 CPU、内存、温度、占用最高的应用名和本机规则建议作为上下文，发送到你选择的服务。不会发送文件内容。窗口顶部「AI 能看到」一栏可以查看完整内容。对话只保存在内存里，退出应用即清空。
+
+使用 Anthropic 官方接口和 Claude Opus / Sonnet 5.5 等模型时，会自动开启服务端 `fallbacks`：如果请求被安全策略拒绝，由服务端换用其他模型重试。
 
 ## 它为什么很省资源
 
@@ -65,7 +75,7 @@ open build/LoadLens.app
 | 负载 / 运行时间 | `getloadavg` / `sysctl kern.boottime` |
 | 通知 | `UserNotifications`（首次开启时请求授权） |
 | 开机自启 | `~/Library/LaunchAgents/local.loadlens.agent.plist` |
-| AI 分析 | `api.deepseek.com`，`deepseek-chat`，流式（OpenAI 兼容接口） |
+| AI 分析 | 用户选择的服务，流式返回（OpenAI 兼容 / Anthropic Messages） |
 
 ## 已知限制
 
@@ -74,7 +84,8 @@ open build/LoadLens.app
 - 没有拆分单个进程的磁盘 I/O 和 GPU 占用。
 - 通知需要系统授权；高负载要持续 2 分钟才提醒，30 分钟内最多一次。
 - 趋势曲线只保存在内存里，退出应用后清空。
-- AI 分析需要自备 DeepSeek API Key 和网络，按 token 计费；对话不落盘。重新编译应用后，首次读取钥匙串可能要求授权。
+- AI 分析需要自备对应服务的 API Key（本地 Ollama 除外），按各家标准计费；对话不落盘。重新编译应用后，首次读取钥匙串可能要求授权。
+- 预置的模型名可能随厂商更新而过时，用「获取模型列表」拉取最新列表即可。
 - 需要 macOS 13 及以上（使用了 `MenuBarExtra`）。
 
 ## 图标
@@ -96,8 +107,12 @@ Sources/Model.swift      进程合并、应用归组、ps 兜底
 Sources/Diagnoser.swift  诊断规则与建议生成
 Sources/LoginItem.swift  开机自启（LaunchAgent）
 Sources/Notifier.swift   高负载系统通知
-Sources/Keychain.swift   API Key 的钥匙串存取
-Sources/DeepSeekClient.swift  DeepSeek 流式接口
+Sources/Keychain.swift   API Key 的钥匙串存取（每个服务一条）
+Sources/AIProviders.swift    预置模型服务、配置存储
+Sources/LLMClient.swift      通用流式客户端（OpenAI 兼容 / Anthropic）
+Sources/AISettingsView.swift AI 模型设置窗口
+Sources/Theme.swift      配色、卡片与通用控件
+Sources/MarkdownText.swift   AI 回复的 Markdown 渲染
 Sources/AIChat.swift     AI 对话状态与上下文
 Sources/AIChatView.swift AI 窗口界面
 Sources/AIChatWindow.swift   AI 窗口管理

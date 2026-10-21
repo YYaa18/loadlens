@@ -26,21 +26,17 @@ final class AIChat: ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var errorNeedsKey = false
     @Published private(set) var canRetry = false
-    @Published private(set) var hasKey = false
-    @Published var settingsOpen = false
-    @Published var keyDraft = ""
-    @Published private(set) var keyNote: String?
     @Published private(set) var lastContext = ""
+    /// The provider/model that answered most recently, shown under replies.
+    @Published private(set) var lastModelLabel = ""
 
-    private let client = DeepSeekClient.shared
-    private var cachedKey: String?
+    let config = AIConfigStore.shared
+    private let client = LLMClient.shared
     private var task: Task<Void, Never>?
     private var pending = ""
     private var flushScheduled = false
     private var currentAssistantID: UUID?
     private var lastRequest: (prompt: String, display: String?)?
-    private let mockMode = ProcessInfo.processInfo.environment["LOADLENS_AI_MOCK"] == "1"
-    private let envKey = ProcessInfo.processInfo.environment["LOADLENS_AI_KEY"]
 
     private let systemPrompt = """
     你是一个 macOS 性能诊断助手，服务对象是不懂技术的普通用户。你会收到本机实时快照。
@@ -56,55 +52,7 @@ final class AIChat: ObservableObject {
 
     private init() {}
 
-    // MARK: - Keys
-
-    func refreshKeyState() {
-        if mockMode || envKey?.isEmpty == false {
-            hasKey = true
-            if mockMode { settingsOpen = false }
-            return
-        }
-        if cachedKey == nil {
-            cachedKey = Keychain.load()
-        }
-        hasKey = cachedKey != nil
-        if !hasKey { settingsOpen = true }
-    }
-
-    private func currentKey() -> String? {
-        if mockMode { return "mock" }
-        if let envKey, !envKey.isEmpty { return envKey }
-        if let cachedKey { return cachedKey }
-        cachedKey = Keychain.load()
-        return cachedKey
-    }
-
-    func saveKey() {
-        let trimmed = keyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            keyNote = "请输入 API Key"
-            return
-        }
-        if Keychain.save(trimmed) {
-            cachedKey = trimmed
-            hasKey = true
-            settingsOpen = false
-            keyDraft = ""
-            keyNote = "已保存到系统钥匙串"
-            errorMessage = nil
-        } else {
-            keyNote = "保存失败，请检查钥匙串权限"
-        }
-    }
-
-    func removeKey() {
-        Keychain.delete()
-        cachedKey = nil
-        hasKey = false
-        settingsOpen = true
-        keyNote = "已删除保存的 Key"
-        messages = []
-    }
+    var isReady: Bool { config.isReady }
 
     func dismissError() {
         errorMessage = nil
@@ -127,10 +75,9 @@ final class AIChat: ObservableObject {
         send(question.text, display: question.display)
     }
 
-    /// Runs the overview analysis when the conversation is empty and a key is ready.
+    /// Runs the overview analysis when the conversation is empty and a model is ready.
     func startIfEmpty() {
-        refreshKeyState()
-        guard hasKey, messages.isEmpty, !isStreaming else { return }
+        guard isReady, messages.isEmpty, !isStreaming else { return }
         analyzeCurrentState()
     }
 
@@ -148,14 +95,14 @@ final class AIChat: ObservableObject {
     func send(_ raw: String, display: String? = nil) {
         let question = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty, !isStreaming else { return }
-        guard let key = currentKey() else {
-            hasKey = false
-            settingsOpen = true
+        guard isReady else {
+            AISettingsWindowController.shared.show()
             return
         }
+        let endpoint = config.endpoint()
+        lastModelLabel = "\(endpoint.preset.name) · \(endpoint.model)"
 
         dismissError()
-        keyNote = nil
         if display == nil { input = "" }
         lastRequest = (question, display)
         let context = buildContext()
@@ -168,17 +115,18 @@ final class AIChat: ObservableObject {
         pending = ""
         isStreaming = true
 
-        let history = messages
-            .filter { !$0.text.isEmpty }
-            .suffix(10)
-            .map { DeepSeekMessage(role: $0.role == .user ? "user" : "assistant", content: $0.text) }
-        let apiMessages = [DeepSeekMessage(role: "system",
-                                           content: systemPrompt + "\n\n本机快照：\n" + context)] + history
+        // Last few turns, starting from a user message (required by some APIs).
+        var history = Array(messages.filter { !$0.text.isEmpty }.suffix(10))
+        while history.first?.role == .assistant { history.removeFirst() }
+        let apiMessages = history.map {
+            LLMMessage(role: $0.role == .user ? "user" : "assistant", content: $0.text)
+        }
+        let system = systemPrompt + "\n\n本机快照：\n" + context
 
         task = Task { [weak self] in
             guard let self else { return }
             do {
-                try await client.stream(messages: apiMessages, apiKey: key) { delta in
+                try await client.stream(system: system, messages: apiMessages, endpoint: endpoint) { delta in
                     DispatchQueue.main.async { [weak self] in
                         self?.appendDelta(delta)
                     }
@@ -265,8 +213,9 @@ final class AIChat: ObservableObject {
             messages.removeLast()
         }
         errorMessage = error.localizedDescription
-        if case DeepSeekError.http(let code, _)? = error as? DeepSeekError, code == 401 {
-            errorNeedsKey = true
+        if let llmError = error as? LLMError {
+            if llmError.isAuthError { errorNeedsKey = true }
+            if case .notConfigured = llmError { errorNeedsKey = true }
         }
         canRetry = !errorNeedsKey
     }

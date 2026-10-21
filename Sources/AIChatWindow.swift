@@ -45,9 +45,8 @@ final class AIChatWindowController: NSObject, NSWindowDelegate {
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
 
-        chat.refreshKeyState()
         if openSettings {
-            chat.settingsOpen = true
+            AISettingsWindowController.shared.show()
         } else if autoAnalyze {
             chat.startIfEmpty()
         }

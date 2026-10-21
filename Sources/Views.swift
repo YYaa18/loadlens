@@ -56,7 +56,7 @@ struct PanelView: View {
             Toggle("开机自动启动", isOn: $monitor.launchAtLogin)
             Toggle("持续高负载时通知我", isOn: $monitor.notificationsEnabled)
             Divider()
-            Button("AI 设置（API Key）…") { openAI(settings: true) }
+            Button("AI 模型设置…") { AISettingsWindowController.shared.show() }
             Button("复制诊断报告") { copyReport() }
             Button("打开活动监视器") { monitor.openActivityMonitor() }
             Divider()
@@ -290,7 +290,7 @@ struct PanelView: View {
             }
             .buttonStyle(GradientButtonStyle())
             .padding(.top, 2)
-            .help("DeepSeek 结合当前实时数据，用大白话解释原因")
+            .help("AI 结合当前实时数据，用大白话解释原因")
         }
         .card()
     }
