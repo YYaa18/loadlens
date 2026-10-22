@@ -1,0 +1,371 @@
+{
+ "about": "本地小模型分诊考题：硬盘事件已经超过提醒阈值，判断是否值得打扰用户。expect_notify 已由用户于 2026-10-22 审定。原则：用户自己知道在做的事（下载、拷贝、导入）不打扰；在背后悄悄堆积、可以清理或明显异常的才提醒。剩余空间不足由代码硬规则处理，不交给模型。注意：这些题目不能出现在给模型的提示词里，否则考试就失去意义。",
+ "cases": [
+  {
+   "id": "A01",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 4.2,
+    "free_gb": 180,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "Xcode",
+      "process": "swift-frontend",
+      "gb": 4.0
+     }
+    ]
+   },
+   "expect_notify": false,
+   "note": "编译产生的中间文件，开发时很常见"
+  },
+  {
+   "id": "A02",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 6.1,
+    "free_gb": 150,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "Docker",
+      "process": "com.docker.backend",
+      "gb": 5.8
+     }
+    ]
+   },
+   "expect_notify": false,
+   "note": "拉取镜像，正常"
+  },
+  {
+   "id": "A03",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 5.0,
+    "free_gb": 210,
+    "total_gb": 494,
+    "writers": []
+   },
+   "expect_notify": false,
+   "note": "找不到写入者（多半是系统进程，如时间机器），空间充足"
+  },
+  {
+   "id": "A04",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 8.3,
+    "free_gb": 60,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "com.xyz.agent",
+      "process": "com.xyz.agent",
+      "gb": 8.1
+     }
+    ]
+   },
+   "expect_notify": true,
+   "note": "不认识的后台程序大量写入"
+  },
+  {
+   "id": "A05",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 5.2,
+    "free_gb": 100,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "Google Chrome",
+      "process": "Google Chrome",
+      "gb": 5.1
+     }
+    ]
+   },
+   "expect_notify": false,
+   "note": "浏览器下载文件"
+  },
+  {
+   "id": "A06",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 12.4,
+    "free_gb": 40,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "Xcode",
+      "process": "Python",
+      "gb": 12.2
+     }
+    ]
+   },
+   "expect_notify": true,
+   "note": "脚本 10 分钟写 12GB，照这个速度很快写满"
+  },
+  {
+   "id": "A07",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 5.0,
+    "free_gb": 9,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "Safari",
+      "process": "Safari",
+      "gb": 4.9
+     }
+    ]
+   },
+   "expect_notify": true,
+   "note": "原因正常，但只剩 9GB"
+  },
+  {
+   "id": "A08",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 8.0,
+    "free_gb": 120,
+    "total_gb": 494,
+    "writers": []
+   },
+   "expect_notify": false,
+   "note": "系统更新下载（系统进程，看不到写入者）"
+  },
+  {
+   "id": "A09",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 10.5,
+    "free_gb": 200,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "照片",
+      "process": "photolibraryd",
+      "gb": 10.2
+     }
+    ]
+   },
+   "expect_notify": false,
+   "note": "导入照片"
+  },
+  {
+   "id": "A10",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 6.3,
+    "free_gb": 70,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "WeChat",
+      "process": "WeChat",
+      "gb": 6.1
+     }
+    ]
+   },
+   "expect_notify": true,
+   "note": "【请你定】聊天软件 10 分钟写 6GB 少见，可能在迁移或备份聊天记录"
+  },
+  {
+   "id": "A11",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 4.4,
+    "free_gb": 160,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "LM Studio",
+      "process": "LM Studio",
+      "gb": 4.3
+     }
+    ]
+   },
+   "expect_notify": false,
+   "note": "下载模型文件"
+  },
+  {
+   "id": "A12",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 22.0,
+    "free_gb": 300,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "访达",
+      "process": "Finder",
+      "gb": 21.8
+     }
+    ]
+   },
+   "expect_notify": false,
+   "note": "用户自己在拷贝文件"
+  },
+  {
+   "id": "B01",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Caches/com.google.Chrome",
+    "owner": "Google Chrome",
+    "grown_gb": 6.0,
+    "size_gb": 9.2,
+    "free_gb": 150,
+    "total_gb": 494
+   },
+   "expect_notify": true,
+   "note": "缓存可清理，一周涨 6GB 值得一提"
+  },
+  {
+   "id": "B02",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Developer/Xcode/DerivedData",
+    "owner": "Xcode",
+    "grown_gb": 12.0,
+    "size_gb": 25.0,
+    "free_gb": 150,
+    "total_gb": 494
+   },
+   "expect_notify": true,
+   "note": "编译缓存，删掉会自动重建"
+  },
+  {
+   "id": "B03",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Downloads",
+    "owner": null,
+    "grown_gb": 5.4,
+    "size_gb": 12.0,
+    "free_gb": 150,
+    "total_gb": 494
+   },
+   "expect_notify": false,
+   "note": "【请你定】用户自己下载的东西，但装完的安装包常被遗忘"
+  },
+  {
+   "id": "B04",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Containers/com.docker.docker/Data",
+    "owner": "Docker",
+    "grown_gb": 15.0,
+    "size_gb": 48.0,
+    "free_gb": 120,
+    "total_gb": 494
+   },
+   "expect_notify": true,
+   "note": "Docker 虚拟磁盘只增不减，要手动清理"
+  },
+  {
+   "id": "B05",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Application Support/MobileSync/Backup",
+    "owner": "iPhone 备份",
+    "grown_gb": 8.0,
+    "size_gb": 60.0,
+    "free_gb": 200,
+    "total_gb": 494
+   },
+   "expect_notify": false,
+   "note": "【请你定】正常的 iPhone 备份，但旧备份常被遗忘"
+  },
+  {
+   "id": "B06",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/.cache/huggingface",
+    "owner": "Hugging Face 模型缓存",
+    "grown_gb": 20.0,
+    "size_gb": 35.0,
+    "free_gb": 120,
+    "total_gb": 494
+   },
+   "expect_notify": true,
+   "note": "下载过的模型堆积"
+  },
+  {
+   "id": "B07",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Logs/SomeVPN",
+    "owner": "SomeVPN",
+    "grown_gb": 5.2,
+    "size_gb": 5.3,
+    "free_gb": 180,
+    "total_gb": 494
+   },
+   "expect_notify": true,
+   "note": "日志一周写 5GB，明显不正常"
+  },
+  {
+   "id": "B08",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Movies",
+    "owner": null,
+    "grown_gb": 30.0,
+    "size_gb": 80.0,
+    "free_gb": 200,
+    "total_gb": 494
+   },
+   "expect_notify": false,
+   "note": "用户自己的视频"
+  },
+  {
+   "id": "B09",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Mail",
+    "owner": "邮件",
+    "grown_gb": 5.1,
+    "size_gb": 14.0,
+    "free_gb": 200,
+    "total_gb": 494
+   },
+   "expect_notify": false,
+   "note": "邮件附件，正常"
+  },
+  {
+   "id": "B10",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Application Support/Code/User/workspaceStorage",
+    "owner": "Visual Studio Code",
+    "grown_gb": 6.5,
+    "size_gb": 7.0,
+    "free_gb": 160,
+    "total_gb": 494
+   },
+   "expect_notify": true,
+   "note": "编辑器的工作区缓存异常膨胀"
+  }
+ ]
+}

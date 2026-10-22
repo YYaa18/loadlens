@@ -261,3 +261,374 @@ func runLocalModelTest(path: String) {
         print("失败：\(error.localizedDescription)")
     }
 }
+
+/// `--triage-eval <model.gguf> [cases.json] [--prompt v1|v2] [--reason-first] [--no-grammar]`:
+/// runs every exam case through `Triage.judge` and scores it against the reviewed answers.
+func runTriageEval(modelPath: String, casesPath: String, options: Triage.Options) -> Bool {
+    struct Case: Decodable {
+        let id: String
+        let facts: DiskEventFacts
+        let expect_notify: Bool
+        /// Expected category (only in the generated test set).
+        let category: String?
+    }
+    struct Exam: Decodable { let cases: [Case] }
+
+    guard let data = FileManager.default.contents(atPath: casesPath),
+          let exam = try? JSONDecoder().decode(Exam.self, from: data) else {
+        print("读不到考题：\(casesPath)")
+        return false
+    }
+    let modeText = options.mode == .category
+        ? "模型判断类别，代码决定提醒"
+        : "模型直接判断 · 提示词 \(options.prompt.rawValue) · \(options.reasonFirst ? "先理由后结论" : "先结论后理由")"
+    print("设置：\(modeText) · \(options.useGrammar ? "语法约束" : "无约束")")
+
+    do {
+        let model = try LocalModel(path: modelPath)
+        print("模型：\(model.description)\n")
+        var correct = 0, misses = 0, falseAlarms = 0, unparsed = 0
+        var categoryCases = 0, categoryCorrect = 0
+        var times: [Double] = []
+
+        for item in exam.cases {
+            let start = Date()
+            let verdict = try Triage.judge(item.facts, model: model, options: options)
+            let ms = Date().timeIntervalSince(start) * 1000
+            if !verdict.byRule { times.append(ms) }
+            if !verdict.parsed { unparsed += 1 }
+
+            var categoryMark = ""
+            if let expected = item.category, options.mode == .category, !verdict.byRule {
+                categoryCases += 1
+                if verdict.category?.rawValue == expected { categoryCorrect += 1 } else { categoryMark = " （应为 \(expected)）" }
+            }
+            let right = verdict.notify == item.expect_notify
+            if right { correct += 1 } else if item.expect_notify { misses += 1 } else { falseAlarms += 1 }
+
+            let mark = right ? "✓" : "✗"
+            let got = verdict.notify ? "提醒" : "不打扰"
+            let source = verdict.byRule ? "规则" : String(format: "%4.0fms", ms)
+            let category = verdict.category.map { "[\($0.rawValue)] " } ?? ""
+            let detail = verdict.parsed ? category + verdict.reason : "（读不懂输出）\(verdict.raw.prefix(60))"
+            print("\(mark) \(item.id) \(got)\t\(source)  \(detail)\(categoryMark)")
+            fflush(stdout)
+        }
+
+        let total = exam.cases.count
+        let average = times.isEmpty ? 0 : times.reduce(0, +) / Double(times.count)
+        print("")
+        print("答对 \(correct)/\(total)（\(Int(Double(correct) / Double(total) * 100))%）· 漏报 \(misses) · 误报 \(falseAlarms) · 输出读不懂 \(unparsed)")
+        if categoryCases > 0 {
+            print("类别答对 \(categoryCorrect)/\(categoryCases)（\(Int(Double(categoryCorrect) / Double(categoryCases) * 100))%）")
+        }
+        print(String(format: "模型判断平均 %.0f ms，最慢 %.0f ms", average, times.max() ?? 0))
+        return true
+    } catch {
+        print("失败：\(error.localizedDescription)")
+        return false
+    }
+}
+
+/// `--triage-export <facts.jsonl> <out.jsonl>`: turns generated training facts into chat examples
+/// using the app's own prompt and description code, so training sees exactly what the app sends.
+func runTriageExport(input: String, output: String) -> Bool {
+    struct Row: Decodable {
+        let facts: DiskEventFacts
+        let category: String
+        let reason: String
+    }
+    guard let text = try? String(contentsOfFile: input, encoding: .utf8) else {
+        print("读不到：\(input)")
+        return false
+    }
+    var lines: [String] = []
+    for line in text.split(separator: "\n") where !line.isEmpty {
+        guard let row = try? JSONDecoder().decode(Row.self, from: Data(line.utf8)),
+              Triage.Category(rawValue: row.category) != nil else {
+            print("格式不对：\(line.prefix(80))")
+            return false
+        }
+        // Same shape the grammar allows: {"category": "...", "reason": "..."}
+        let reason = row.reason.replacingOccurrences(of: "\"", with: "'")
+        let answer = "{\"category\": \"\(row.category)\", \"reason\": \"\(reason)\"}"
+        let example: [String: Any] = ["messages": [
+            ["role": "system", "content": Triage.categoryPrompt],
+            ["role": "user", "content": row.facts.description],
+            ["role": "assistant", "content": answer]
+        ]]
+        guard let data = try? JSONSerialization.data(withJSONObject: example, options: [.withoutEscapingSlashes]),
+              let json = String(data: data, encoding: .utf8) else { return false }
+        lines.append(json)
+    }
+    do {
+        try (lines.joined(separator: "\n") + "\n").write(toFile: output, atomically: true, encoding: .utf8)
+        print("\(lines.count) 条 → \(output)")
+        return true
+    } catch {
+        print("写入失败：\(error.localizedDescription)")
+        return false
+    }
+}
+
+/// `--embed-export <model.gguf> <input> <out.jsonl> [--pooling mean|last]`: writes one vector per
+/// example, from either generated facts (.jsonl) or an exam file (.json with "cases").
+func runEmbedExport(modelPath: String, input: String, output: String, pooling: EmbeddingModel.Pooling,
+                    instruction: String = "", lowercase: Bool = false, namesOnly: Bool = false) -> Bool {
+    struct Item {
+        let id: String
+        let facts: DiskEventFacts
+        let category: String?
+        let expectNotify: Bool?
+    }
+    struct Row: Decodable { let facts: DiskEventFacts; let category: String }
+    struct Case: Decodable { let id: String; let facts: DiskEventFacts; let category: String?; let expect_notify: Bool }
+    struct Exam: Decodable { let cases: [Case] }
+
+    var items: [Item] = []
+    if input.hasSuffix(".json") {
+        guard let data = FileManager.default.contents(atPath: input),
+              let exam = try? JSONDecoder().decode(Exam.self, from: data) else { print("读不到：\(input)"); return false }
+        items = exam.cases.map { Item(id: $0.id, facts: $0.facts, category: $0.category, expectNotify: $0.expect_notify) }
+    } else {
+        guard let text = try? String(contentsOfFile: input, encoding: .utf8) else { print("读不到：\(input)"); return false }
+        for (n, line) in text.split(separator: "\n").enumerated() where !line.isEmpty {
+            guard let row = try? JSONDecoder().decode(Row.self, from: Data(line.utf8)) else { print("格式不对：第 \(n + 1) 行"); return false }
+            items.append(Item(id: "\(n)", facts: row.facts, category: row.category, expectNotify: nil))
+        }
+    }
+
+    do {
+        let start = Date()
+        let embedder = try EmbeddingModel(path: modelPath, pooling: pooling)
+        var lines: [String] = []
+        for item in items {
+            let text = instruction + (namesOnly ? item.facts.names : item.facts.description)
+            var row: [String: Any] = ["id": item.id, "embedding": try embedder.embed(lowercase ? text.lowercased() : text)]
+            if let category = item.category { row["category"] = category }
+            if let expect = item.expectNotify { row["expect_notify"] = expect }
+            let data = try JSONSerialization.data(withJSONObject: row)
+            lines.append(String(decoding: data, as: UTF8.self))
+        }
+        try (lines.joined(separator: "\n") + "\n").write(toFile: output, atomically: true, encoding: .utf8)
+        let seconds = Date().timeIntervalSince(start)
+        print("\(items.count) 条，\(embedder.dimensions) 维，\(pooling.rawValue) 池化，用时 \(String(format: "%.1f", seconds)) 秒 → \(output)")
+        return true
+    } catch {
+        print("失败：\(error.localizedDescription)")
+        return false
+    }
+}
+
+/// `--probe-eval <model.gguf> <probe.json> [cases.json]`: scores the Jev-style decision model and
+/// shows what confidence thresholds buy: decide locally when sure, fall back (notify) otherwise.
+func runProbeEval(modelPath: String, probePath: String, casesPath: String) -> Bool {
+    struct Case: Decodable { let id: String; let facts: DiskEventFacts; let expect_notify: Bool; let category: String? }
+    struct Exam: Decodable { let cases: [Case] }
+    guard let data = FileManager.default.contents(atPath: casesPath),
+          let exam = try? JSONDecoder().decode(Exam.self, from: data) else { print("读不到考题：\(casesPath)"); return false }
+
+    do {
+        let loadStart = Date()
+        let model = try DecisionModel(probePath: probePath, modelPath: modelPath)
+        print("决策模型：\(model.probe.pooling.rawValue) 池化 · 加载 \(Int(Date().timeIntervalSince(loadStart) * 1000)) ms\n")
+
+        struct Result { let right: Bool; let expect: Bool; let confidence: Double; let categoryRight: Bool? }
+        var results: [Result] = []
+        var times: [Double] = []
+        for item in exam.cases {
+            if let reason = Triage.hardRule(item.facts) {
+                print("✓ \(item.id) 提醒\t规则  \(reason)")
+                results.append(Result(right: item.expect_notify, expect: item.expect_notify, confidence: 1, categoryRight: nil))
+                continue
+            }
+            let start = Date()
+            let decision = try model.decide(item.facts)
+            times.append(Date().timeIntervalSince(start) * 1000)
+            let notify = decision.category.notify
+            let right = notify == item.expect_notify
+            let categoryRight = item.category.map { $0 == decision.category.rawValue }
+            results.append(Result(right: right, expect: item.expect_notify, confidence: decision.confidence, categoryRight: categoryRight))
+            let second = decision.probabilities.count > 1 ? decision.probabilities[1] : decision.probabilities[0]
+            let wrongCategory = (categoryRight == false) ? "（应为 \(item.category!)）" : ""
+            print(String(format: "%@ %@ %@\t%3.0fms  %@ %.0f%%，其次 %@ %.0f%% · 提醒概率 %.0f%%%@",
+                         right ? "✓" : "✗", item.id, notify ? "提醒" : "不打扰", times.last!,
+                         decision.category.rawValue, decision.confidence * 100,
+                         second.category.rawValue, second.probability * 100, decision.notifyProbability * 100, wrongCategory))
+        }
+
+        let n = Double(results.count)
+        let correct = results.filter(\.right).count
+        let misses = results.filter { !$0.right && $0.expect }.count
+        let labelled = results.compactMap(\.categoryRight)
+        print("")
+        print("全部本地决定：答对 \(correct)/\(results.count)（\(Int(Double(correct) / n * 100))%）· 漏报 \(misses)"
+              + (labelled.isEmpty ? "" : " · 类别 \(labelled.filter { $0 }.count)/\(labelled.count)"))
+        print(String(format: "每次决定平均 %.0f ms，最慢 %.0f ms", times.reduce(0, +) / Double(max(times.count, 1)), times.max() ?? 0))
+        print("\n置信度门槛（低于门槛就保守地提醒，或交给云端）：")
+        for threshold in [0.5, 0.7, 0.8, 0.9, 0.95] {
+            let sure = results.filter { $0.confidence >= threshold }
+            let sureRight = sure.filter(\.right).count
+            // Fallback = notify: right when the case expected a notification.
+            let fallbackRight = results.filter { $0.confidence < threshold && $0.expect }.count
+            let overallMisses = sure.filter { !$0.right && $0.expect }.count
+            print(String(format: "  ≥%.0f%%：本地决定 %d 条（%.0f%%），其中答对 %.0f%% · 加上兜底总体答对 %.0f%% · 漏报 %d",
+                         threshold * 100, sure.count, Double(sure.count) / n * 100,
+                         sure.isEmpty ? 0 : Double(sureRight) / Double(sure.count) * 100,
+                         Double(sureRight + fallbackRight) / n * 100, overallMisses))
+        }
+        return true
+    } catch {
+        print("失败：\(error.localizedDescription)")
+        return false
+    }
+}
+
+/// `--embed-text <model.gguf> <mean|last|cls> <text>…`: one JSON vector per text (developer check).
+/// A function, so the model is released before the process exits (llama.cpp's GPU cleanup asserts
+/// if a model is still loaded at exit).
+func runEmbedText(modelPath: String, pooling: EmbeddingModel.Pooling, texts: [String]) -> Bool {
+    do {
+        let model = try EmbeddingModel(path: modelPath, pooling: pooling)
+        for text in texts {
+            let data = try JSONSerialization.data(withJSONObject: try model.embed(text))
+            print(String(decoding: data, as: UTF8.self))
+        }
+        return true
+    } catch {
+        print("失败：\(error.localizedDescription)")
+        return false
+    }
+}
+
+/// `--hybrid-eval <model.gguf> <probe.json> <cases.json> [--passes N] [--threshold T] [--no-cloud]`
+/// Runs the five-layer decision over the cases (in order, N times) with a simulated cloud that
+/// always answers correctly, and a throwaway memory file. Nothing is sent anywhere.
+func runHybridEval(modelPath: String, probePath: String, casesPath: String, passes: Int, threshold: Double,
+                   useCloud: Bool) -> Bool {
+    struct Case: Decodable { let id: String; let facts: DiskEventFacts; let expect_notify: Bool; let category: String? }
+    struct Exam: Decodable { let cases: [Case] }
+    guard let data = FileManager.default.contents(atPath: casesPath),
+          let exam = try? JSONDecoder().decode(Exam.self, from: data) else { print("读不到考题：\(casesPath)"); return false }
+
+    /// The simulated cloud: knows the right answer (category if given, else any notify-consistent one).
+    final class OracleCloud: CloudJudge {
+        var answers: [String: Triage.Category] = [:]
+        var calls = 0
+        func category(for facts: DiskEventFacts) async throws -> Triage.Category {
+            calls += 1
+            guard let category = answers[facts.description] else { throw LocalModel.LocalModelError.tokenizeFailed }
+            return category
+        }
+    }
+
+    do {
+        let local = try DecisionModel(probePath: probePath, modelPath: modelPath)
+        let memoryURL = FileManager.default.temporaryDirectory.appendingPathComponent("loadlens-memory-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: memoryURL) }
+        let cloud = OracleCloud()
+        for item in exam.cases {
+            cloud.answers[item.facts.description] = item.category.flatMap(Triage.Category.init(rawValue:))
+                ?? (item.expect_notify ? .unknown : .userActivity)
+        }
+        let triage = HybridTriage(local: local, memory: AnswerMemory(url: memoryURL),
+                                  cloud: useCloud ? cloud : nil, threshold: threshold)
+        print("门槛 \(Int(threshold * 100))% · \(useCloud ? "模拟云端（总是答对）" : "不联网")\n")
+
+        for pass in 1...max(passes, 1) {
+            var sources: [HybridTriage.Source: Int] = [:]
+            var correct = 0, misses = 0, falseAlarms = 0
+            var times: [Double] = []
+            let callsBefore = cloud.calls
+            for item in exam.cases {
+                let start = Date()
+                var result: HybridTriage.Result?
+                let semaphore = DispatchSemaphore(value: 0)
+                Task { result = await triage.decide(item.facts); semaphore.signal() }
+                while semaphore.wait(timeout: .now()) == .timedOut { RunLoop.main.run(until: Date().addingTimeInterval(0.001)) }
+                times.append(Date().timeIntervalSince(start) * 1000)
+                guard let result else { continue }
+                sources[result.source, default: 0] += 1
+                if result.notify == item.expect_notify { correct += 1 } else if item.expect_notify { misses += 1 } else { falseAlarms += 1 }
+            }
+            let n = exam.cases.count
+            let order: [HybridTriage.Source] = [.rule, .memory, .local, .cloud, .fallback]
+            let breakdown = order.compactMap { s in sources[s].map { "\(s.rawValue) \($0)（\(Int(Double($0) / Double(n) * 100))%）" } }
+            print("第 \(pass) 遍：" + breakdown.joined(separator: " · "))
+            print("  答对 \(correct)/\(n)（\(Int(Double(correct) / Double(n) * 100))%）· 漏报 \(misses) · 误报 \(falseAlarms) · 云端调用 \(cloud.calls - callsBefore) 次"
+                  + String(format: " · 平均 %.1f ms", times.reduce(0, +) / Double(max(times.count, 1))))
+        }
+        print("\n记住了 \(triage.memory.entries.count) 个名字")
+        return true
+    } catch {
+        print("失败：\(error.localizedDescription)")
+        return false
+    }
+}
+
+/// `--cloud-eval <cases.json>`: asks the configured cloud model about one case per distinct name
+/// and scores it. Sends only the event descriptions in that file (meant for synthetic test data).
+func runCloudEval(casesPath: String) -> Bool {
+    struct Case: Decodable { let id: String; let facts: DiskEventFacts; let expect_notify: Bool; let category: String? }
+    struct Exam: Decodable { let cases: [Case] }
+    guard let data = FileManager.default.contents(atPath: casesPath),
+          let exam = try? JSONDecoder().decode(Exam.self, from: data) else { print("读不到考题：\(casesPath)"); return false }
+
+    var seen = Set<String>()
+    let cases = exam.cases.filter { $0.category != nil && seen.insert($0.facts.names).inserted }
+    let endpoint = AIConfigStore.shared.endpoint()
+    print("云端：\(endpoint.preset.name) · \(endpoint.model) · \(cases.count) 条（每个名字一条）\n")
+
+    struct Outcome { let item: Case; let got: Triage.Category?; let error: String?; let ms: Double }
+    var outcomes: [Outcome] = []
+    var finished = false
+    Task {
+        let judge = LLMCloudJudge()
+        // A few at a time, to be quick without hammering the service.
+        await withTaskGroup(of: Outcome.self) { group in
+            var next = 0
+            func add() {
+                guard next < cases.count else { return }
+                let item = cases[next]; next += 1
+                group.addTask {
+                    let start = Date()
+                    do {
+                        let got = try await judge.category(for: item.facts)
+                        return Outcome(item: item, got: got, error: nil, ms: Date().timeIntervalSince(start) * 1000)
+                    } catch {
+                        return Outcome(item: item, got: nil, error: error.localizedDescription, ms: Date().timeIntervalSince(start) * 1000)
+                    }
+                }
+            }
+            for _ in 0..<4 { add() }
+            for await outcome in group { outcomes.append(outcome); add() }
+        }
+        finished = true
+    }
+    while !finished { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
+
+    var right = 0, notifyRight = 0, failed = 0, misses = 0
+    var confusion: [String: Int] = [:]
+    for o in outcomes.sorted(by: { $0.item.id < $1.item.id }) {
+        guard let got = o.got else {
+            failed += 1
+            print("！\(o.item.id) 调用失败：\(o.error ?? "")")
+            continue
+        }
+        let expected = o.item.category!
+        if got.rawValue == expected { right += 1 } else {
+            confusion["\(expected) → \(got.rawValue)", default: 0] += 1
+            print("✗ \(o.item.id) \(o.item.facts.names) 判成 \(got.rawValue)（应为 \(expected)）")
+        }
+        if got.notify == o.item.expect_notify { notifyRight += 1 } else if o.item.expect_notify { misses += 1 }
+    }
+    let answered = outcomes.count - failed
+    let times = outcomes.map(\.ms).sorted()
+    print("")
+    print("类别答对 \(right)/\(answered)（\(answered > 0 ? right * 100 / answered : 0)%）· 提醒判断对 \(notifyRight)/\(answered) · 漏报 \(misses) · 调用失败 \(failed)")
+    if !times.isEmpty {
+        print(String(format: "耗时：中位数 %.0f ms，最慢 %.0f ms", times[times.count / 2], times.last!))
+    }
+    for (pair, count) in confusion.sorted(by: { $0.value > $1.value }).prefix(6) { print("  \(pair)：\(count)") }
+    return failed < outcomes.count
+}

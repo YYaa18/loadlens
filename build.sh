@@ -29,6 +29,9 @@ xcrun swiftc -O -swift-version 5 \
     "$ROOT/Sources/LLMClient.swift" \
     "$ROOT/Sources/AITools.swift" \
     "$ROOT/Sources/LocalModel.swift" \
+    "$ROOT/Sources/Triage.swift" \
+    "$ROOT/Sources/DecisionModel.swift" \
+    "$ROOT/Sources/HybridTriage.swift" \
     "$ROOT/Sources/AISettingsView.swift" \
     "$ROOT/Sources/Theme.swift" \
     "$ROOT/Sources/MarkdownText.swift" \

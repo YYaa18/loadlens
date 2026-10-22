@@ -1,0 +1,1031 @@
+{
+ "about": "独立测试集：由 train/make_data.py 生成，名字与训练集、模拟考（triage-cases.json）都不重叠。category 为期望类别，expect_notify 由类别按代码里的规则推出。",
+ "cases": [
+  {
+   "id": "T01",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 5.3,
+    "free_gb": 339,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "deno",
+      "process": "deno",
+      "gb": 4.9
+     }
+    ]
+   },
+   "category": "script",
+   "expect_notify": true
+  },
+  {
+   "id": "T02",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 19.0,
+    "free_gb": 682,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "app.selt.worker",
+      "process": "app.selt.worker",
+      "gb": 18.3
+     },
+     {
+      "app": "媒体分析",
+      "process": "mediaanalysisd",
+      "gb": 4.2
+     }
+    ]
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "T03",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 16.0,
+    "free_gb": 182,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "NexoBridge",
+      "process": "NexoBridge",
+      "gb": 15.2
+     }
+    ]
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "T04",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Application Support/com.apple.wallpaper",
+    "owner": null,
+    "grown_gb": 12.1,
+    "size_gb": 15.6,
+    "free_gb": 184,
+    "total_gb": 994
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "T05",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 5.1,
+    "free_gb": 158,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "迅雷",
+      "process": "Thunder",
+      "gb": 4.8
+     }
+    ]
+   },
+   "category": "user_activity",
+   "expect_notify": false
+  },
+  {
+   "id": "T06",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/.seltbridge",
+    "owner": null,
+    "grown_gb": 22.5,
+    "size_gb": 42.4,
+    "free_gb": 1100,
+    "total_gb": 1995
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "T07",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 18.6,
+    "free_gb": 34,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "QuabHostd",
+      "process": "QuabHostd",
+      "gb": 17.2
+     }
+    ]
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "T08",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 14,
+    "path": "~/Library/Application Support/cn.plum.worker",
+    "owner": null,
+    "grown_gb": 23.9,
+    "size_gb": 44.3,
+    "free_gb": 121,
+    "total_gb": 494
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "T09",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 14,
+    "path": "~/Library/Containers/com.tencent.WeWorkMac/Data",
+    "owner": "企业微信",
+    "grown_gb": 10.9,
+    "size_gb": 20.7,
+    "free_gb": 62,
+    "total_gb": 245
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "T10",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Sites",
+    "owner": null,
+    "grown_gb": 29.6,
+    "size_gb": 57.0,
+    "free_gb": 512,
+    "total_gb": 994
+   },
+   "category": "user_files",
+   "expect_notify": false
+  },
+  {
+   "id": "T11",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 13.0,
+    "free_gb": 164,
+    "total_gb": 494,
+    "writers": []
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "T12",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 11.3,
+    "free_gb": 110,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "Rancher Desktop",
+      "process": "rancher-desktop",
+      "gb": 11.2
+     }
+    ]
+   },
+   "category": "dev_work",
+   "expect_notify": false
+  },
+  {
+   "id": "T13",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Sites",
+    "owner": null,
+    "grown_gb": 5.8,
+    "size_gb": 24.7,
+    "free_gb": 120,
+    "total_gb": 994
+   },
+   "category": "user_files",
+   "expect_notify": false
+  },
+  {
+   "id": "T14",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 22.0,
+    "free_gb": 95,
+    "total_gb": 245,
+    "writers": []
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "T15",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Application Support/app.irvo.watcher",
+    "owner": null,
+    "grown_gb": 19.5,
+    "size_gb": 39.3,
+    "free_gb": 586,
+    "total_gb": 1995
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "T16",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 15.7,
+    "free_gb": 25,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "deno",
+      "process": "deno",
+      "gb": 14.8
+     }
+    ]
+   },
+   "category": "script",
+   "expect_notify": true
+  },
+  {
+   "id": "T17",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Containers/com.tencent.WeWorkMac/Data",
+    "owner": "企业微信",
+    "grown_gb": 9.8,
+    "size_gb": 23.8,
+    "free_gb": 326,
+    "total_gb": 1995
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "T18",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 24.2,
+    "free_gb": 102,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "迅雷",
+      "process": "Thunder",
+      "gb": 23.6
+     }
+    ]
+   },
+   "category": "user_activity",
+   "expect_notify": false
+  },
+  {
+   "id": "T19",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 4.0,
+    "free_gb": 573,
+    "total_gb": 994,
+    "writers": []
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "T20",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 30,
+    "drop_gb": 11.7,
+    "free_gb": 92,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "Rancher Desktop",
+      "process": "rancher-desktop",
+      "gb": 11.6
+     }
+    ]
+   },
+   "category": "dev_work",
+   "expect_notify": false
+  },
+  {
+   "id": "T21",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 6.4,
+    "free_gb": 64,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "NexoWorker",
+      "process": "NexoWorker",
+      "gb": 6.2
+     }
+    ]
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "T22",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 30,
+    "path": "~/.conda/pkgs",
+    "owner": null,
+    "grown_gb": 15.1,
+    "size_gb": 41.5,
+    "free_gb": 448,
+    "total_gb": 1995
+   },
+   "category": "cache",
+   "expect_notify": true
+  },
+  {
+   "id": "T23",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/.pm2/logs",
+    "owner": null,
+    "grown_gb": 19.1,
+    "size_gb": 38.2,
+    "free_gb": 225,
+    "total_gb": 494
+   },
+   "category": "log",
+   "expect_notify": true
+  },
+  {
+   "id": "T24",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 3,
+    "path": "~/Library/Application Support/Webex",
+    "owner": "Webex",
+    "grown_gb": 11.0,
+    "size_gb": 49.4,
+    "free_gb": 394,
+    "total_gb": 994
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "T25",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 14,
+    "path": "~/.bun/install/cache",
+    "owner": "Bun",
+    "grown_gb": 14.3,
+    "size_gb": 29.2,
+    "free_gb": 72,
+    "total_gb": 994
+   },
+   "category": "cache",
+   "expect_notify": true
+  },
+  {
+   "id": "T26",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Application Support/Microsoft/Teams",
+    "owner": "Microsoft Teams",
+    "grown_gb": 29.5,
+    "size_gb": 34.4,
+    "free_gb": 502,
+    "total_gb": 1995
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "T27",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Application Support/com.apple.wallpaper",
+    "owner": null,
+    "grown_gb": 21.7,
+    "size_gb": 42.5,
+    "free_gb": 369,
+    "total_gb": 994
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "T28",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 3,
+    "path": "~/Library/Logs/Parallels",
+    "owner": "Parallels Desktop",
+    "grown_gb": 29.6,
+    "size_gb": 47.3,
+    "free_gb": 53,
+    "total_gb": 245
+   },
+   "category": "log",
+   "expect_notify": true
+  },
+  {
+   "id": "T29",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 15.2,
+    "free_gb": 27,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "bun",
+      "process": "bun",
+      "gb": 14.6
+     }
+    ]
+   },
+   "category": "script",
+   "expect_notify": true
+  },
+  {
+   "id": "T30",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 4.8,
+    "free_gb": 157,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "Transmit",
+      "process": "Transmit",
+      "gb": 4.6
+     }
+    ]
+   },
+   "category": "user_activity",
+   "expect_notify": false
+  },
+  {
+   "id": "T31",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 13.8,
+    "free_gb": 149,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "企业微信",
+      "process": "WeWorkMac",
+      "gb": 13.6
+     }
+    ]
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "T32",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/.conda/pkgs",
+    "owner": null,
+    "grown_gb": 6.9,
+    "size_gb": 11.8,
+    "free_gb": 125,
+    "total_gb": 494
+   },
+   "category": "cache",
+   "expect_notify": true
+  },
+  {
+   "id": "T33",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 20.0,
+    "free_gb": 644,
+    "total_gb": 1995,
+    "writers": [
+     {
+      "app": "Colima",
+      "process": "limactl",
+      "gb": 18.9
+     },
+     {
+      "app": "云同步服务",
+      "process": "cloudd",
+      "gb": 1.0
+     }
+    ]
+   },
+   "category": "dev_work",
+   "expect_notify": false
+  },
+  {
+   "id": "T34",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 14.0,
+    "free_gb": 170,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "Transmit",
+      "process": "Transmit",
+      "gb": 13.4
+     },
+     {
+      "app": "系统升级助手",
+      "process": "UpdateBrainService",
+      "gb": 3.2
+     }
+    ]
+   },
+   "category": "user_activity",
+   "expect_notify": false
+  },
+  {
+   "id": "T35",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 19.3,
+    "free_gb": 257,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "Rscript",
+      "process": "Rscript",
+      "gb": 18.4
+     },
+     {
+      "app": "系统升级助手",
+      "process": "UpdateBrainService",
+      "gb": 2.0
+     }
+    ]
+   },
+   "category": "script",
+   "expect_notify": true
+  },
+  {
+   "id": "T36",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 14,
+    "path": "~/.nexobridge",
+    "owner": null,
+    "grown_gb": 23.0,
+    "size_gb": 32.2,
+    "free_gb": 289,
+    "total_gb": 494
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "T37",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Mobile Documents/com~apple~CloudDocs",
+    "owner": "iCloud 云盘",
+    "grown_gb": 17.3,
+    "size_gb": 25.7,
+    "free_gb": 463,
+    "total_gb": 994
+   },
+   "category": "user_files",
+   "expect_notify": false
+  },
+  {
+   "id": "T38",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 25.0,
+    "free_gb": 298,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "企业微信",
+      "process": "WeWorkMac",
+      "gb": 24.4
+     }
+    ]
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "T39",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 3.5,
+    "free_gb": 127,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "julia",
+      "process": "julia",
+      "gb": 3.4
+     }
+    ]
+   },
+   "category": "script",
+   "expect_notify": true
+  },
+  {
+   "id": "T40",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/.pm2/logs",
+    "owner": null,
+    "grown_gb": 17.4,
+    "size_gb": 48.5,
+    "free_gb": 189,
+    "total_gb": 494
+   },
+   "category": "log",
+   "expect_notify": true
+  },
+  {
+   "id": "T41",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 19.0,
+    "free_gb": 51,
+    "total_gb": 245,
+    "writers": []
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "T42",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Sites",
+    "owner": null,
+    "grown_gb": 9.7,
+    "size_gb": 30.7,
+    "free_gb": 778,
+    "total_gb": 1995
+   },
+   "category": "user_files",
+   "expect_notify": false
+  },
+  {
+   "id": "T43",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 3,
+    "path": "~/Library/CloudStorage/Box-Box",
+    "owner": "Box",
+    "grown_gb": 14.7,
+    "size_gb": 17.7,
+    "free_gb": 46,
+    "total_gb": 494
+   },
+   "category": "user_files",
+   "expect_notify": false
+  },
+  {
+   "id": "T44",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 30,
+    "drop_gb": 24.9,
+    "free_gb": 90,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "GarageBand",
+      "process": "GarageBand",
+      "gb": 24.4
+     }
+    ]
+   },
+   "category": "user_activity",
+   "expect_notify": false
+  },
+  {
+   "id": "T45",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/org.quab.worker",
+    "owner": null,
+    "grown_gb": 17.9,
+    "size_gb": 55.0,
+    "free_gb": 75,
+    "total_gb": 245
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "T46",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Application Support/com.apple.wallpaper",
+    "owner": null,
+    "grown_gb": 17.1,
+    "size_gb": 18.0,
+    "free_gb": 200,
+    "total_gb": 494
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "T47",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 4.2,
+    "free_gb": 325,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "Microsoft Teams",
+      "process": "MSTeams",
+      "gb": 3.9
+     }
+    ]
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "T48",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Application Support/Webex",
+    "owner": "Webex",
+    "grown_gb": 4.2,
+    "size_gb": 11.8,
+    "free_gb": 250,
+    "total_gb": 494
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "T49",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 24.8,
+    "free_gb": 64,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "企业微信",
+      "process": "WeWorkMac",
+      "gb": 22.9
+     },
+     {
+      "app": "云同步服务",
+      "process": "cloudd",
+      "gb": 4.9
+     }
+    ]
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "T50",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 17.1,
+    "free_gb": 64,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "org.nexo.hostd",
+      "process": "org.nexo.hostd",
+      "gb": 17.0
+     }
+    ]
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "T51",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Containers/com.utmapp.UTM/Data",
+    "owner": "UTM",
+    "grown_gb": 7.8,
+    "size_gb": 39.4,
+    "free_gb": 183,
+    "total_gb": 494
+   },
+   "category": "cache",
+   "expect_notify": true
+  },
+  {
+   "id": "T52",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 25.5,
+    "free_gb": 113,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "Unreal Editor",
+      "process": "UnrealEditor",
+      "gb": 24.3
+     },
+     {
+      "app": "云同步服务",
+      "process": "cloudd",
+      "gb": 3.2
+     }
+    ]
+   },
+   "category": "dev_work",
+   "expect_notify": false
+  },
+  {
+   "id": "T53",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 24.1,
+    "free_gb": 1188,
+    "total_gb": 1995,
+    "writers": [
+     {
+      "app": "Microsoft Teams",
+      "process": "MSTeams",
+      "gb": 23.0
+     }
+    ]
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "T54",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 30,
+    "path": "~/Library/Application Support/com.apple.wallpaper",
+    "owner": null,
+    "grown_gb": 27.8,
+    "size_gb": 50.7,
+    "free_gb": 327,
+    "total_gb": 1995
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "T55",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/.pm2/logs",
+    "owner": null,
+    "grown_gb": 12.4,
+    "size_gb": 14.8,
+    "free_gb": 161,
+    "total_gb": 494
+   },
+   "category": "log",
+   "expect_notify": true
+  },
+  {
+   "id": "T56",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 18.7,
+    "free_gb": 1359,
+    "total_gb": 1995,
+    "writers": [
+     {
+      "app": "Colima",
+      "process": "limactl",
+      "gb": 18.1
+     }
+    ]
+   },
+   "category": "dev_work",
+   "expect_notify": false
+  },
+  {
+   "id": "T57",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 30,
+    "drop_gb": 26.1,
+    "free_gb": 164,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "云同步服务",
+      "process": "cloudd",
+      "gb": 23.8
+     }
+    ]
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "T58",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Application Support/com.apple.wallpaper",
+    "owner": null,
+    "grown_gb": 19.0,
+    "size_gb": 42.3,
+    "free_gb": 505,
+    "total_gb": 994
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "T59",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Logs/ClashX",
+    "owner": "ClashX",
+    "grown_gb": 29.8,
+    "size_gb": 46.1,
+    "free_gb": 254,
+    "total_gb": 494
+   },
+   "category": "log",
+   "expect_notify": true
+  },
+  {
+   "id": "T60",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 30,
+    "path": "~/Library/Caches/com.operasoftware.Opera",
+    "owner": "Opera",
+    "grown_gb": 27.2,
+    "size_gb": 33.5,
+    "free_gb": 560,
+    "total_gb": 994
+   },
+   "category": "cache",
+   "expect_notify": true
+  }
+ ]
+}

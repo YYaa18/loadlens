@@ -156,6 +156,11 @@ open build/LoadLens.app                                 # 直接运行（不安�
 | `--disk-watch [秒数] [GB] [分钟]` | 测试硬盘空间监控：用临时规则运行，有提醒时直接打印（不保存设置、不发通知） |
 | `--notify-test` | 打印通知权限状态，并发一条测试通知 |
 | `--llm-test <模型.gguf>` | 加载本地模型，跑三个实验：KV 缓存前缀复用、读题与生成的速度、采样温度的影响 |
+| `--triage-eval <模型.gguf> [考题.json]` | 本地生成式模型答分诊考题（`--direct` 直接判断，默认判类别） |
+| `--embed-export` / `--embed-text` | 导出嵌入向量（训练分类器用） |
+| `--probe-eval <模型.gguf> <分类器.json> [考题.json]` | 嵌入 + 分类器打分，并列出不同置信度门槛下的效果 |
+| `--hybrid-eval <模型.gguf> <分类器.json> <考题.json>` | 五层分诊决策的模拟（模拟云端，不联网） |
+| `--cloud-eval <考题.json>` | 把考题发给已配置的云端模型打分（会联网、产生少量费用） |
 | `--folder-scan` | 把家目录量一遍，打印用时和最大的文件夹（不保存） |
 | `--folder-growth-selftest` | 在临时目录里自测「文件夹持续变大」的定位和去重逻辑，通过时打印 PASS |
 | `--preview-window [秒]` | 把面板放在普通窗口里显示，便于截图 |
@@ -225,12 +230,17 @@ Sources/
   AITools.swift              AI 可调用的只读工具
   LLMClient.swift            流式客户端与工具调用（OpenAI 兼容 / Anthropic）
   LocalModel.swift           内嵌 llama.cpp 的本地模型推理（KV 缓存复用、采样）
+  Triage.swift               硬盘事件分诊：类别定义与提醒规则、提示词、语法约束
+  DecisionModel.swift        嵌入模型 + 线性分类器（固定答案、带置信度）
+  HybridTriage.swift         五层分诊决策：硬规则、记忆、本地模型、云端、兜底
   MarkdownText.swift         AI 回复的 Markdown 渲染
   Keychain.swift             API Key 存取
   LoginItem.swift            开机自启
   Notifier.swift             系统通知
   CLI.swift                  终端体检与开发用预览
 Resources/                   图标
+train/                       本地分诊模型的数据生成、训练与评测（见 train/README.md）
+eval/                        分诊考题（模拟考与冻结的测试集）
 tools/
   setup-signing.sh           创建本机自签名证书（可选）
   fetch-llama.sh             下载固定版本的 llama.cpp 预编译框架到 vendor/（build.sh 自动调用）

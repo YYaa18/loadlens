@@ -85,6 +85,65 @@ if let index = CommandLine.arguments.firstIndex(of: "--llm-test"), CommandLine.a
     exit(0)
 }
 
+// Developer check: --embed-text <model.gguf> <mean|last|cls> <text>… prints one JSON vector per text.
+if let index = CommandLine.arguments.firstIndex(of: "--embed-text"), CommandLine.arguments.count > index + 3 {
+    let args = CommandLine.arguments
+    exit(runEmbedText(modelPath: (args[index + 1] as NSString).expandingTildeInPath,
+                      pooling: EmbeddingModel.Pooling(rawValue: args[index + 2]) ?? .mean,
+                      texts: Array(args[(index + 3)...])) ? 0 : 1)
+}
+
+if let index = CommandLine.arguments.firstIndex(of: "--cloud-eval"), CommandLine.arguments.count > index + 1 {
+    let ok = MainActor.assumeIsolated { runCloudEval(casesPath: CommandLine.arguments[index + 1]) }
+    exit(ok ? 0 : 1)
+}
+
+if let index = CommandLine.arguments.firstIndex(of: "--hybrid-eval"), CommandLine.arguments.count > index + 3 {
+    let args = CommandLine.arguments
+    func value(_ flag: String) -> String? { args.firstIndex(of: flag).flatMap { args.count > $0 + 1 ? args[$0 + 1] : nil } }
+    let ok = runHybridEval(modelPath: (args[index + 1] as NSString).expandingTildeInPath, probePath: args[index + 2],
+                           casesPath: args[index + 3], passes: value("--passes").flatMap(Int.init) ?? 2,
+                           threshold: value("--threshold").flatMap(Double.init) ?? 0.7,
+                           useCloud: !args.contains("--no-cloud"))
+    exit(ok ? 0 : 1)
+}
+
+if let index = CommandLine.arguments.firstIndex(of: "--probe-eval"), CommandLine.arguments.count > index + 2 {
+    let args = CommandLine.arguments
+    exit(runProbeEval(modelPath: (args[index + 1] as NSString).expandingTildeInPath, probePath: args[index + 2],
+                      casesPath: args.count > index + 3 ? args[index + 3] : "eval/triage-test.json") ? 0 : 1)
+}
+
+if let index = CommandLine.arguments.firstIndex(of: "--embed-export"), CommandLine.arguments.count > index + 3 {
+    let args = CommandLine.arguments
+    let pooling: EmbeddingModel.Pooling = args.firstIndex(of: "--pooling").flatMap {
+        args.count > $0 + 1 ? EmbeddingModel.Pooling(rawValue: args[$0 + 1]) : nil
+    } ?? .mean
+    let instruction = args.firstIndex(of: "--instruction").flatMap { args.count > $0 + 1 ? args[$0 + 1] : nil } ?? ""
+    exit(runEmbedExport(modelPath: (args[index + 1] as NSString).expandingTildeInPath, input: args[index + 2],
+                        output: args[index + 3], pooling: pooling, instruction: instruction,
+                        lowercase: args.contains("--lowercase"), namesOnly: args.contains("--names-only")) ? 0 : 1)
+}
+
+if let index = CommandLine.arguments.firstIndex(of: "--triage-export"), CommandLine.arguments.count > index + 2 {
+    exit(runTriageExport(input: CommandLine.arguments[index + 1], output: CommandLine.arguments[index + 2]) ? 0 : 1)
+}
+
+if let index = CommandLine.arguments.firstIndex(of: "--triage-eval"), CommandLine.arguments.count > index + 1 {
+    let args = CommandLine.arguments
+    let positional = args[(index + 1)...].filter { !$0.hasPrefix("--") && !["v1", "v2"].contains($0) }
+    var options = Triage.Options()
+    if let i = args.firstIndex(of: "--prompt"), args.count > i + 1, let version = Triage.Options.PromptVersion(rawValue: args[i + 1]) {
+        options.prompt = version
+    }
+    options.reasonFirst = args.contains("--reason-first")
+    options.mode = args.contains("--direct") ? .direct : .category
+    options.useGrammar = !args.contains("--no-grammar")
+    let modelPath = (positional.first.map { ($0 as NSString).expandingTildeInPath }) ?? ""
+    let casesPath = positional.dropFirst().first ?? "eval/triage-cases.json"
+    exit(runTriageEval(modelPath: modelPath, casesPath: casesPath, options: options) ? 0 : 1)
+}
+
 if CommandLine.arguments.contains("--folder-growth-selftest") {
     exit(runFolderGrowthSelfTest() ? 0 : 1)
 }

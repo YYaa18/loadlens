@@ -27,6 +27,9 @@ final class LocalModel {
         /// > 1 makes recently used tokens less likely, to avoid loops.
         var repeatPenalty: Float = 1.1
         var seed: UInt32 = 42
+        /// A GBNF grammar (rule `root`). Tokens that would break it are removed before choosing,
+        /// so the output is guaranteed to match: constrained decoding instead of asking nicely.
+        var grammar: String?
 
         static let greedy = Sampling(temperature: 0)
     }
@@ -77,7 +80,7 @@ final class LocalModel {
     /// Exactly the tokens whose keys/values are in the KV cache right now, in order.
     private var cachedTokens: [llama_token] = []
 
-    private static let backend: Void = {
+    static let backend: Void = {
         // llama.cpp is chatty on stderr; keep the app's output clean.
         llama_log_set({ _, _, _ in }, nil)
         llama_backend_init()
@@ -224,6 +227,9 @@ final class LocalModel {
         var params = llama_sampler_chain_default_params()
         params.no_perf = true
         let chain = llama_sampler_chain_init(params)!
+        if let grammar = s.grammar, let constraint = llama_sampler_init_grammar(vocab, grammar, "root") {
+            llama_sampler_chain_add(chain, constraint)
+        }
         if s.repeatPenalty != 1 {
             // Look back over the last 64 tokens.
             llama_sampler_chain_add(chain, llama_sampler_init_penalties(llama_vocab_n_tokens(vocab), 64, s.repeatPenalty, 0, 0))
