@@ -128,3 +128,26 @@ func renderPreview(to path: String) {
         print("write failed: \(error)")
     }
 }
+
+/// Terminal test for the disk-space alert: `--disk-watch [seconds] [thresholdGB] [windowMinutes]`.
+/// Uses its own settings (never saved) and prints alerts instead of sending notifications.
+func runDiskWatchTest(seconds: Double, thresholdGB: Double, windowMinutes: Int) {
+    var rules = DiskWatchSettings()
+    rules.enabled = true
+    rules.thresholdGB = thresholdGB
+    rules.windowMinutes = windowMinutes
+    let watcher = DiskGrowthWatcher(settings: rules, persists: false)
+    watcher.onEvent = { event in
+        print("⚠️  \(event.title)：\(event.body)")
+        fflush(stdout)
+    }
+    print("硬盘监控测试：\(windowMinutes) 分钟内少 \(thresholdGB) GB 即提醒，运行 \(Int(seconds)) 秒")
+    let end = Date().addingTimeInterval(seconds)
+    while Date() < end {
+        if let status = watcher.observe() {
+            print("可用 \(formatSize(status.free))　窗口内减少 \(formatSize(status.drop))")
+            fflush(stdout)
+        }
+        RunLoop.main.run(until: Date().addingTimeInterval(5))
+    }
+}

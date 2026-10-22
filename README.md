@@ -149,6 +149,8 @@ open build/LoadLens.app                                 # 直接运行（不安�
 | --- | --- |
 | `--diagnose` | 在终端打印一次完整体检 |
 | `--tool-test <工具名> '<JSON 参数>'` | 用实时数据运行一个 AI 工具，打印结果 |
+| `--disk-watch [秒数] [GB] [分钟]` | 测试硬盘空间监控：用临时规则运行，有提醒时直接打印（不保存设置、不发通知） |
+| `--notify-test` | 打印通知权限状态，并发一条测试通知 |
 | `--preview-window [秒]` | 把面板放在普通窗口里显示，便于截图 |
 | `--render-preview <路径>` | 把面板离屏渲染成 PNG |
 | `--ai-preview` | 启动后直接打开 AI 独立窗口并分析一次 |
@@ -159,6 +161,7 @@ open build/LoadLens.app                                 # 直接运行（不安�
 | 环境变量 | 作用 |
 | --- | --- |
 | `LOADLENS_AI_MOCK=1` | AI 返回固定的演示内容，不联网 |
+| `LOADLENS_DISKWATCH_DEBUG=1` | 硬盘空间监控每次检查都打印剩余空间、减少量和当前规则 |
 | `LOADLENS_AI_KEY=<key>` | 临时给当前服务指定 Key |
 | `LOADLENS_SETTINGS_SUITE=<名字>` | 使用独立的设置和钥匙串条目，测试时不影响真实配置 |
 | `LOADLENS_DOCK_SIDE=left` | 强制 AI 助手在面板左侧展开 |

@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import UserNotifications
 import Darwin
 
 if CommandLine.arguments.contains("--keychain-test") {
@@ -54,6 +55,37 @@ if let index = CommandLine.arguments.firstIndex(of: "--tool-test") {
         while output == nil { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
         print(output ?? "")
     }
+    exit(0)
+}
+
+// Developer check: print notification permission and send one test notification.
+if CommandLine.arguments.contains("--notify-test") {
+    let center = UNUserNotificationCenter.current()
+    var done = false
+    center.getNotificationSettings { settings in
+        let status: String
+        switch settings.authorizationStatus {
+        case .authorized: status = "authorized"
+        case .denied: status = "denied"
+        case .notDetermined: status = "notDetermined"
+        case .provisional: status = "provisional"
+        default: status = "other(\(settings.authorizationStatus.rawValue))"
+        }
+        print("authorization: \(status)  alertStyle: \(settings.alertStyle.rawValue)  alerts: \(settings.alertSetting.rawValue)")
+        Notifier.shared.send(title: "负载侦探测试通知", body: "看到这条，说明通知能正常弹出。")
+        done = true
+    }
+    while !done { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+    RunLoop.main.run(until: Date().addingTimeInterval(1))
+    exit(0)
+}
+
+if let index = CommandLine.arguments.firstIndex(of: "--disk-watch") {
+    let args = CommandLine.arguments
+    func arg(_ offset: Int) -> String? { args.count > index + offset ? args[index + offset] : nil }
+    runDiskWatchTest(seconds: arg(1).flatMap(Double.init) ?? 60,
+                     thresholdGB: arg(2).flatMap(Double.init) ?? 5,
+                     windowMinutes: arg(3).flatMap(Int.init) ?? 10)
     exit(0)
 }
 

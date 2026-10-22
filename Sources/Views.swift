@@ -156,6 +156,7 @@ struct PanelView: View {
         Menu {
             Toggle("开机自动启动", isOn: $monitor.launchAtLogin)
             Toggle("持续高负载时通知我", isOn: $monitor.notificationsEnabled)
+            Button("硬盘空间监控…") { DiskWatchWindowController.shared.show() }
             Divider()
             Button("AI 模型设置…") { AISettingsWindowController.shared.show() }
             Button("复制诊断报告") { copyReport() }

@@ -219,7 +219,7 @@ final class ProcessTracker {
         return Array(pids.prefix(Int(written)))
     }
 
-    private static func processName(_ pid: pid_t) -> String {
+    static func processName(_ pid: pid_t) -> String {
         var buffer = [CChar](repeating: 0, count: 256)
         let length = buffer.withUnsafeMutableBytes { raw in
             proc_name(pid, raw.baseAddress, UInt32(raw.count))
@@ -228,7 +228,7 @@ final class ProcessTracker {
         return String(cString: buffer)
     }
 
-    private static func processPath(_ pid: pid_t) -> String {
+    static func processPath(_ pid: pid_t) -> String {
         var buffer = [CChar](repeating: 0, count: 4096)
         let length = buffer.withUnsafeMutableBytes { raw in
             proc_pidpath(pid, raw.baseAddress, UInt32(raw.count))
