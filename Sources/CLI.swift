@@ -218,3 +218,46 @@ func runFolderScan() {
         print("无权访问：" + snapshot.skipped.prefix(10).map { "~/" + $0 }.joined(separator: "、"))
     }
 }
+
+/// `--llm-test <model.gguf>`: loads a local model and runs three small experiments that show
+/// prefix reuse in the KV cache, prefill vs decode speed, and what sampling settings change.
+func runLocalModelTest(path: String) {
+    func show(_ title: String, _ result: (text: String, stats: LocalModel.Stats)) {
+        let s = result.stats
+        print("── \(title)")
+        print("回答：\(result.text.trimmingCharacters(in: .whitespacesAndNewlines))")
+        print(String(format: "提示 %d 词元（复用缓存 %d）· 读题 %.0f ms（%.0f 词元/秒）· 生成 %d 词元 %.0f ms（%.1f 词元/秒）",
+                     s.promptTokens, s.reusedTokens, s.prefillSeconds * 1000, s.prefillTokensPerSecond,
+                     s.generatedTokens, s.decodeSeconds * 1000, s.decodeTokensPerSecond))
+        fflush(stdout)
+    }
+
+    do {
+        let loadStart = Date()
+        let model = try LocalModel(path: path)
+        print("模型：\(model.description)，加载 \(Int(Date().timeIntervalSince(loadStart) * 1000)) ms，上下文 \(model.contextLength) 词元")
+
+        // A long, fixed system prompt (the "不易" part) and short, changing questions ("变易").
+        let system = "你是 Mac 硬盘助手。用一句简短的中文回答。背景知识：" + String(repeating:
+            "~/Library/Caches 是应用缓存，删除后会自动重建；DerivedData 是 Xcode 编译缓存；Docker 的虚拟磁盘会只增不减。", count: 8)
+        let first = try model.chatPrompt([("system", system), ("user", "Docker 的数据为什么越来越大？")])
+        let second = try model.chatPrompt([("system", system), ("user", "应用缓存可以删吗？")])
+
+        show("实验 1：冷启动（KV 缓存是空的）", try model.generate(prompt: first, maxTokens: 60, sampling: .greedy))
+        show("实验 2：同一段背景、换个问题（背景部分直接复用）", try model.generate(prompt: second, maxTokens: 60, sampling: .greedy))
+        model.clearCache()
+        show("实验 2 对照：清空缓存后问同一个问题", try model.generate(prompt: second, maxTokens: 60, sampling: .greedy))
+
+        let creative = try model.chatPrompt([("user", "用一句话形容硬盘快满了的感觉。")])
+        for seed: UInt32 in [1, 2] {
+            show("实验 3：温度 0（贪心），seed \(seed)", try model.generate(prompt: creative, maxTokens: 40,
+                                                                    sampling: .init(temperature: 0, seed: seed)))
+        }
+        for seed: UInt32 in [1, 2] {
+            show("实验 3：温度 1.2，seed \(seed)", try model.generate(prompt: creative, maxTokens: 40,
+                                                                sampling: .init(temperature: 1.2, seed: seed)))
+        }
+    } catch {
+        print("失败：\(error.localizedDescription)")
+    }
+}

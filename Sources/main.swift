@@ -80,6 +80,11 @@ if CommandLine.arguments.contains("--notify-test") {
     exit(0)
 }
 
+if let index = CommandLine.arguments.firstIndex(of: "--llm-test"), CommandLine.arguments.count > index + 1 {
+    runLocalModelTest(path: (CommandLine.arguments[index + 1] as NSString).expandingTildeInPath)
+    exit(0)
+}
+
 if CommandLine.arguments.contains("--folder-growth-selftest") {
     exit(runFolderGrowthSelfTest() ? 0 : 1)
 }

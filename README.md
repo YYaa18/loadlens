@@ -155,6 +155,7 @@ open build/LoadLens.app                                 # 直接运行（不安�
 | `--tool-test <工具名> '<JSON 参数>'` | 用实时数据运行一个 AI 工具，打印结果 |
 | `--disk-watch [秒数] [GB] [分钟]` | 测试硬盘空间监控：用临时规则运行，有提醒时直接打印（不保存设置、不发通知） |
 | `--notify-test` | 打印通知权限状态，并发一条测试通知 |
+| `--llm-test <模型.gguf>` | 加载本地模型，跑三个实验：KV 缓存前缀复用、读题与生成的速度、采样温度的影响 |
 | `--folder-scan` | 把家目录量一遍，打印用时和最大的文件夹（不保存） |
 | `--folder-growth-selftest` | 在临时目录里自测「文件夹持续变大」的定位和去重逻辑，通过时打印 PASS |
 | `--preview-window [秒]` | 把面板放在普通窗口里显示，便于截图 |
@@ -223,6 +224,7 @@ Sources/
   AIProviders.swift          预置模型服务与配置存储
   AITools.swift              AI 可调用的只读工具
   LLMClient.swift            流式客户端与工具调用（OpenAI 兼容 / Anthropic）
+  LocalModel.swift           内嵌 llama.cpp 的本地模型推理（KV 缓存复用、采样）
   MarkdownText.swift         AI 回复的 Markdown 渲染
   Keychain.swift             API Key 存取
   LoginItem.swift            开机自启
@@ -231,6 +233,7 @@ Sources/
 Resources/                   图标
 tools/
   setup-signing.sh           创建本机自签名证书（可选）
+  fetch-llama.sh             下载固定版本的 llama.cpp 预编译框架到 vendor/（build.sh 自动调用）
   IconGen.swift              图标生成器
 build.sh / install.sh / uninstall.sh
 AGENTS.md                    给 AI 编程工具看的安装与开发说明
