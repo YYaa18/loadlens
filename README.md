@@ -15,6 +15,10 @@
   <img alt="License" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue">
 </p>
 
+<p align="center">
+  <img src="docs/hero.png" width="900" alt="负载侦探：电脑为什么变慢、风扇为什么响，用大白话说清楚">
+</p>
+
 ---
 
 ## 功能一览
@@ -45,6 +49,31 @@
 - 硬盘页每一项旁的 ✨、占用排行里的「问 AI」，一键深入分析
 
 **其他**：开机自启、复制诊断报告、终端体检命令。
+
+## 界面截图
+
+<table align="center">
+  <tr>
+    <td align="center" valign="top" width="340">
+      <img src="docs/screenshots/overview.png" width="330" alt="概览页"><br>
+      <sub>概览：结论、趋势、占用排行和能马上做的建议</sub>
+    </td>
+    <td align="center" valign="top" width="340">
+      <img src="docs/screenshots/disk.png" width="330" alt="硬盘页"><br>
+      <sub>硬盘：容量、健康、读写和可清理空间</sub>
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/screenshots/ai.png" width="440" alt="AI 助手"><br>
+  <sub>AI 助手：结合实时数据回答，能自己调用只读工具查明细</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/menubar.png" width="156" alt="菜单栏常驻"><br>
+  <sub>菜单栏常驻：圆环显示当前 CPU 百分比</sub>
+</p>
 
 ## 快速开始
 
@@ -244,6 +273,7 @@ Sources/
   Notifier.swift             系统通知
   CLI.swift                  终端体检与开发用预览
 Resources/                   图标；triage/ 里是内置的分诊模型、分类器和第三方许可声明
+docs/                        界面截图与宣传素材
 train/                       本地分诊模型的数据生成、训练与评测（见 train/README.md）
 eval/                        分诊考题（模拟考与冻结的测试集）
 tools/
