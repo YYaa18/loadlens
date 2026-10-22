@@ -80,6 +80,15 @@ if CommandLine.arguments.contains("--notify-test") {
     exit(0)
 }
 
+if CommandLine.arguments.contains("--folder-growth-selftest") {
+    exit(runFolderGrowthSelfTest() ? 0 : 1)
+}
+
+if CommandLine.arguments.contains("--folder-scan") {
+    runFolderScan()
+    exit(0)
+}
+
 if let index = CommandLine.arguments.firstIndex(of: "--disk-watch") {
     let args = CommandLine.arguments
     func arg(_ offset: Int) -> String? { args.count > index + offset ? args[index + offset] : nil }

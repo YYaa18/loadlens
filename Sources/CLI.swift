@@ -151,3 +151,70 @@ func runDiskWatchTest(seconds: Double, thresholdGB: Double, windowMinutes: Int) 
         RunLoop.main.run(until: Date().addingTimeInterval(5))
     }
 }
+
+/// `--folder-growth-selftest`: builds a temp folder tree, scans it twice around a 300 MB write
+/// deep inside, and checks that the growth is reported at the deepest folder that explains it.
+func runFolderGrowthSelfTest() -> Bool {
+    let fm = FileManager.default
+    let root = fm.temporaryDirectory.appendingPathComponent("loadlens-growth-\(UUID().uuidString)").path
+    defer { try? fm.removeItem(atPath: root) }
+
+    func write(_ relative: String, megabytes: Int) {
+        let path = root + "/" + relative
+        try? fm.createDirectory(atPath: (path as NSString).deletingLastPathComponent, withIntermediateDirectories: true)
+        fm.createFile(atPath: path, contents: nil)
+        guard let handle = FileHandle(forWritingAtPath: path) else { return }
+        let chunk = Data((0..<1_048_576).map { _ in UInt8.random(in: 0...255) })
+        for _ in 0..<megabytes { handle.write(chunk) }
+        try? handle.close()
+    }
+
+    write("a/old.bin", megabytes: 80)
+    write("x/other.bin", megabytes: 60)
+    // An unreadable folder, like the privacy-protected ones in a real home folder.
+    let locked = root + "/a/locked"
+    try? fm.createDirectory(atPath: locked + "/inner", withIntermediateDirectories: true)
+    try? fm.setAttributes([.posixPermissions: 0o000], ofItemAtPath: locked)
+    defer { try? fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked) }
+    let before = FolderGrowthTracker.scan(root: root, minBytes: 50_000_000)
+    let backdated = FolderSnapshot(date: Date().addingTimeInterval(-3 * 86_400), total: before.total,
+                                   folders: before.folders, skipped: before.skipped)
+
+    write("a/b/c/d/new.bin", megabytes: 300)
+    write("x/more.bin", megabytes: 20)
+    let after = FolderGrowthTracker.scan(root: root, minBytes: 50_000_000)
+
+    var rules = FolderGrowthSettings()
+    rules.enabled = true
+    rules.thresholdGB = 0.25
+    let growth = FolderGrowthTracker.growth(current: after, history: [backdated, after],
+                                            rules: rules, minimum: rules.thresholdBytes)
+    print("before: \(before.folders.mapValues(formatSize))")
+    print("after:  \(after.folders.mapValues(formatSize))")
+    for item in growth { print("growth: \(item.displayPath) +\(formatSize(item.grown))") }
+
+    let alerted = FolderGrowthTracker.alerts(in: growth, alerted: [:], rules: rules)
+    let again = FolderGrowthTracker.alerts(in: growth, alerted: Dictionary(uniqueKeysWithValues: alerted.map { ($0.path, $0.size) }),
+                                           rules: rules)
+    print("notification: \(FolderGrowthTracker.title(for: alerted))：\(FolderGrowthTracker.body(for: alerted, rules: rules))")
+
+    // "a" must still be measured as a whole (80 + 300 MB) despite the locked folder inside it.
+    let aSize = after.folders["a"] ?? 0
+    print("skipped: \(after.skipped)  a=\(formatSize(aSize))")
+    let passed = growth.map(\.path) == ["a/b/c/d"] && alerted.count == 1 && again.isEmpty
+        && after.skipped == ["a/locked"] && aSize >= 380 * 1_048_576
+    print(passed ? "PASS" : "FAIL")
+    return passed
+}
+
+/// `--folder-scan`: scans the real home folder once (nothing is saved) and prints what it found.
+func runFolderScan() {
+    let snapshot = FolderGrowthTracker.scan(root: NSHomeDirectory())
+    print("用时 \(String(format: "%.1f", snapshot.duration)) 秒，共 \(formatSize(snapshot.total))，记录 \(snapshot.folders.count) 个文件夹")
+    for (path, size) in snapshot.folders.sorted(by: { $0.value > $1.value }).prefix(15) {
+        print("  \(formatSize(size))\t~/\(path)")
+    }
+    if !snapshot.skipped.isEmpty {
+        print("无权访问：" + snapshot.skipped.prefix(10).map { "~/" + $0 }.joined(separator: "、"))
+    }
+}

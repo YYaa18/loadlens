@@ -7,8 +7,8 @@ final class DiskWatchWindowController: NSObject, NSWindowDelegate {
 
     func show() {
         if window == nil {
-            let hosting = NSHostingView(rootView: DiskWatchSettingsView(watcher: .shared))
-            let newWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 440, height: 460),
+            let hosting = NSHostingView(rootView: DiskWatchSettingsView(watcher: .shared, folders: .shared))
+            let newWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 680),
                                      styleMask: [.titled, .closable, .miniaturizable],
                                      backing: .buffered,
                                      defer: false)
@@ -26,10 +26,12 @@ final class DiskWatchWindowController: NSObject, NSWindowDelegate {
 
 struct DiskWatchSettingsView: View {
     @ObservedObject var watcher: DiskGrowthWatcher
+    @ObservedObject var folders: FolderGrowthTracker
     @State private var notificationsDenied = false
 
     private let windowChoices = [1, 5, 10, 30, 60]
     private let cooldownChoices = [10, 30, 60, 120]
+    private let dayChoices = [3, 7, 14, 30]
 
     var body: some View {
         Form {
@@ -78,9 +80,83 @@ struct DiskWatchSettingsView: View {
                     }
                 }
             }
+
+            folderSection
         }
         .formStyle(.grouped)
-        .frame(width: 440, height: 460)
+        .frame(width: 460, height: 680)
+    }
+
+    @ViewBuilder
+    private var folderSection: some View {
+        Section {
+            Toggle("文件夹持续变大时提醒我", isOn: folderEnabledBinding)
+            Group {
+                Picker("在多少天内", selection: $folders.settings.days) {
+                    ForEach(dayChoices, id: \.self) { Text("\($0) 天").tag($0) }
+                }
+                Stepper(value: $folders.settings.thresholdGB, in: 1...200, step: 1) {
+                    Text("某个文件夹涨了 \(Int(folders.settings.thresholdGB)) GB 以上")
+                }
+                HStack {
+                    Text(scanStatus)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if folders.isScanning {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Button("现在扫描一次") { folders.scanNow() }
+                    }
+                }
+            }
+            .disabled(!folders.settings.enabled)
+        } header: {
+            Text("持续变大的文件夹")
+        } footer: {
+            Text("每天在电脑空闲时把家目录量一遍，只记文件夹大小，不读取文件内容。第一次扫描时 macOS 可能会询问能否访问桌面、文稿等文件夹，不允许的会跳过。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+
+        if folders.settings.enabled {
+            Section("最近变大的文件夹") {
+                if folders.latestGrowth.isEmpty {
+                    Text(folders.snapshotCount < 2 ? "需要攒够至少一天的记录才能比较。" : "最近没有明显变大的文件夹。")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(folders.latestGrowth) { item in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.label)
+                                .font(.callout)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Text("涨了 \(formatSize(item.grown))，现在 \(formatSize(item.size))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var scanStatus: String {
+        if folders.isScanning { return "正在扫描，可能要一两分钟…" }
+        guard let last = folders.lastSnapshot else { return "还没扫描过" }
+        let when = last.date.formatted(date: .abbreviated, time: .shortened)
+        let skipped = last.skipped.isEmpty ? "" : "，跳过 \(last.skipped.count) 个受系统保护的文件夹"
+        return "上次 \(when)，用时 \(Int(last.duration.rounded())) 秒\(skipped)"
+    }
+
+    private var folderEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { folders.settings.enabled },
+            set: { isOn in
+                folders.settings.enabled = isOn
+                if isOn { Notifier.shared.requestAuthorization { _ in } }
+            }
+        )
     }
 
     private var ruleSummary: String {

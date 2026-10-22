@@ -80,6 +80,7 @@ final class Monitor: ObservableObject {
             self.capture(full: true)
         }
         schedule(every: 6)
+        FolderGrowthTracker.shared.start()
     }
 
     func panelDidOpen() {

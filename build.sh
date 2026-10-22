@@ -15,6 +15,7 @@ xcrun swiftc -O -swift-version 5 \
     "$ROOT/Sources/Model.swift" \
     "$ROOT/Sources/Diagnoser.swift" \
     "$ROOT/Sources/DiskWatch.swift" \
+    "$ROOT/Sources/FolderGrowth.swift" \
     "$ROOT/Sources/DiskWatchView.swift" \
     "$ROOT/Sources/LoginItem.swift" \
     "$ROOT/Sources/Notifier.swift" \
