@@ -27,15 +27,20 @@ final class EmbeddingModel {
     private let model: OpaquePointer
     private let context: OpaquePointer
     private let vocab: OpaquePointer
-    private let maxTokens = 512
+    private let maxTokens: Int
 
-    init(path: String, pooling: Pooling = .mean) throws {
+    /// - Parameter maxTokens: longest text it accepts. The work buffer grows with it, so keep it
+    ///   small for short inputs (an event's names are ~20 tokens).
+    /// - Parameter useGPU: false keeps everything on the CPU. A tiny model like bge-small is just
+    ///   as fast there, and the process never pays the ~40MB the GPU runtime keeps after first use.
+    init(path: String, pooling: Pooling = .mean, useGPU: Bool = true, maxTokens: Int = 512) throws {
         _ = LocalModel.backend
         self.path = path
         self.pooling = pooling
+        self.maxTokens = maxTokens
 
         var modelParams = llama_model_default_params()
-        modelParams.n_gpu_layers = -1
+        modelParams.n_gpu_layers = useGPU ? -1 : 0
         guard let model = llama_model_load_from_file(path, modelParams) else {
             throw LocalModel.LocalModelError.loadFailed(path)
         }
@@ -135,7 +140,7 @@ final class DecisionModel {
     let embedder: EmbeddingModel
     private let categories: [Triage.Category]
 
-    init(probePath: String, modelPath: String) throws {
+    init(probePath: String, modelPath: String, useGPU: Bool = true, maxTokens: Int = 512) throws {
         guard let data = FileManager.default.contents(atPath: probePath),
               let probe = try? JSONDecoder().decode(Probe.self, from: data) else {
             throw LocalModel.LocalModelError.loadFailed(probePath)
@@ -144,7 +149,7 @@ final class DecisionModel {
         guard categories.count == probe.labels.count, probe.weights.count == categories.count else {
             throw LocalModel.LocalModelError.loadFailed(probePath)
         }
-        let embedder = try EmbeddingModel(path: modelPath, pooling: probe.pooling)
+        let embedder = try EmbeddingModel(path: modelPath, pooling: probe.pooling, useGPU: useGPU, maxTokens: maxTokens)
         guard probe.mean.count == embedder.dimensions else {
             // A probe trained on another model's vectors would give nonsense.
             throw LocalModel.LocalModelError.loadFailed("\(probePath)（与模型 \((modelPath as NSString).lastPathComponent) 不匹配）")

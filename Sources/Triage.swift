@@ -91,6 +91,21 @@ enum Triage {
             }
         }
 
+        /// One plain sentence for the notification, saying why it was (or was not) worth telling.
+        var plainReason: String {
+            switch self {
+            case .userFiles: return "看起来是你自己的文件"
+            case .userActivity: return "看起来是你正在进行的操作"
+            case .system: return "是系统在后台工作"
+            case .devWork: return "是开发工具在正常工作"
+            case .script: return "有脚本在大量写数据，留意是否失控"
+            case .cache: return "可以清理的缓存在堆积"
+            case .log: return "日志增长异常，可能有程序出错"
+            case .appData: return "有应用在后台大量写数据"
+            case .unknown: return "不认识的程序在大量写入"
+            }
+        }
+
         /// The policy: things the user knowingly does stay quiet; things piling up behind their back speak up.
         var notify: Bool {
             switch self {

@@ -41,6 +41,14 @@ struct FolderGrowth: Identifiable, Equatable {
     var line: String {
         "\(label) 涨了 \(formatSize(grown))，现在 \(formatSize(size))"
     }
+
+    /// What the triage model reads.
+    func facts(freeBytes: UInt64, totalBytes: UInt64) -> DiskEventFacts {
+        let days = max(Int((Date().timeIntervalSince(since) / 86_400).rounded()), 1)
+        return DiskEventFacts(days: days, path: displayPath, owner: owner, grown_gb: Double(grown) / 1e9,
+                              size_gb: Double(size) / 1e9, free_gb: Double(freeBytes) / 1e9,
+                              total_gb: Double(totalBytes) / 1e9)
+    }
 }
 
 /// Once a day, measures every folder under the home folder (sizes only, never contents) and
@@ -138,9 +146,13 @@ final class FolderGrowthTracker: ObservableObject {
             let alerts = Self.alerts(in: Self.growth(current: snapshot, history: history.snapshots,
                                                      rules: settings, minimum: settings.thresholdBytes),
                                      alerted: history.alerted, rules: settings)
-            if !alerts.isEmpty {
-                for item in alerts { history.alerted[item.path] = item.size }
-                Notifier.shared.send(title: Self.title(for: alerts), body: Self.body(for: alerts, rules: settings))
+            let free = DiskGrowthWatcher.readFreeSpace() ?? 0
+            let total = DiskGrowthWatcher.readTotalSpace() ?? 0
+            for item in alerts {
+                history.alerted[item.path] = item.size
+                // Each folder is judged on its own: one may be a cache to clean, another your own files.
+                TriageService.shared.handle(facts: item.facts(freeBytes: free, totalBytes: total),
+                                            title: Self.title(for: [item]), body: Self.body(for: [item], rules: settings))
             }
         }
         save()

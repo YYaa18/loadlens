@@ -32,6 +32,7 @@ xcrun swiftc -O -swift-version 5 \
     "$ROOT/Sources/Triage.swift" \
     "$ROOT/Sources/DecisionModel.swift" \
     "$ROOT/Sources/HybridTriage.swift" \
+    "$ROOT/Sources/TriageService.swift" \
     "$ROOT/Sources/AISettingsView.swift" \
     "$ROOT/Sources/Theme.swift" \
     "$ROOT/Sources/MarkdownText.swift" \
@@ -54,6 +55,8 @@ lipo "$LLAMA_BIN" -thin "$(uname -m)" -output "$LLAMA_BIN.thin" && mv "$LLAMA_BI
 
 cp "$ROOT/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+# Local triage model (25MB embedding model + its classifier), see Resources/triage/NOTICE.md.
+cp -R "$ROOT/Resources/triage" "$APP/Contents/Resources/triage"
 # Sign with the local certificate when it exists (see tools/setup-signing.sh) so the app keeps
 # the same identity across builds and Keychain "Always Allow" sticks. Otherwise sign ad hoc.
 SIGN_NAME="LoadLens Local Signing"

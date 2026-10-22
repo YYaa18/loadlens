@@ -632,3 +632,86 @@ func runCloudEval(casesPath: String) -> Bool {
     for (pair, count) in confusion.sorted(by: { $0.value > $1.value }).prefix(6) { print("  \(pair)：\(count)") }
     return failed < outcomes.count
 }
+
+/// `--triage-check`: judges a few typical events with the model bundled in the app (no notifications).
+func runTriageCheck() -> Bool {
+    typealias W = DiskEventFacts.Writer
+    let samples: [(String, DiskEventFacts)] = [
+        ("dd 狂写", DiskEventFacts(minutes: 1, drop_gb: 2.1, writers: [W(app: "dd", process: "dd", gb: 2.0)], free_gb: 250, total_gb: 494)),
+        ("Firefox 下载", DiskEventFacts(minutes: 10, drop_gb: 5, writers: [W(app: "Firefox", process: "firefox", gb: 5)], free_gb: 200, total_gb: 494)),
+        ("看不到写入者", DiskEventFacts(minutes: 10, drop_gb: 6, writers: [], free_gb: 200, total_gb: 494)),
+        ("pip 缓存变大", DiskEventFacts(days: 7, path: "~/Library/Caches/pip", owner: "pip", grown_gb: 6, size_gb: 9, free_gb: 200, total_gb: 494)),
+        ("文稿变大", DiskEventFacts(days: 7, path: "~/Documents", owner: nil, grown_gb: 8, size_gb: 30, free_gb: 200, total_gb: 494)),
+        ("快满了", DiskEventFacts(minutes: 10, drop_gb: 5, writers: [W(app: "Firefox", process: "firefox", gb: 5)], free_gb: 9, total_gb: 494)),
+    ]
+    var loaded = true
+    let before = physicalFootprint()
+    for (title, facts) in samples {
+        let start = Date()
+        guard let result = TriageService.shared.checkLocally(facts) else {
+            print("✗ \(title)：本地没把握（会去问云端或兜底提醒）")
+            continue
+        }
+        let ms = Date().timeIntervalSince(start) * 1000
+        let category = result.category?.rawValue ?? "-"
+        let confidence = result.localConfidence.map { " \(Int($0 * 100))%" } ?? ""
+        print(String(format: "%@ %@：%@ · %@%@ · %.0f ms", result.notify ? "🔔" : "🔕", title, category,
+                     result.source.rawValue, confidence, ms))
+        if result.source == .fallback { loaded = false }
+    }
+    print(String(format: "本进程内存：开始 %.1f MB，判断完 %.1f MB（模型在子进程里运行）", before, physicalFootprint()))
+    return loaded
+}
+
+/// This process's memory as Activity Monitor shows it ("memory footprint"), in MB.
+func physicalFootprint() -> Double {
+    var info = task_vm_info_data_t()
+    var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
+    let result = withUnsafeMutablePointer(to: &info) {
+        $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+            task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+        }
+    }
+    return result == KERN_SUCCESS ? Double(info.phys_footprint) / 1_048_576 : 0
+}
+
+/// `--triage-judge`: the helper process. Reads one event (JSON) on stdin, writes
+/// {"category": ..., "confidence": ...} on stdout, then exits, giving all its memory back.
+func runTriageJudge() -> Bool {
+    let input = FileHandle.standardInput.readDataToEndOfFile()
+    guard let facts = try? JSONDecoder().decode(DiskEventFacts.self, from: input) else { return false }
+    // A function scope, so the model is freed before the process exits (llama.cpp asserts otherwise).
+    func answer() -> Data? {
+        guard let model = try? TriageService.loadBundledModel(), let result = try? model.judge(facts) else { return nil }
+        return try? JSONSerialization.data(withJSONObject: ["category": result.category.rawValue,
+                                                            "confidence": result.confidence])
+    }
+    guard let data = answer() else { return false }
+    FileHandle.standardOutput.write(data)
+    return true
+}
+
+/// `--memory-selftest`: a user correction must survive a restart and win over the model.
+func runMemorySelfTest() -> Bool {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("loadlens-memtest-\(UUID().uuidString).json")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let facts = DiskEventFacts(minutes: 1, drop_gb: 2, writers: [.init(app: "perl", process: "perl", gb: 2)],
+                               free_gb: 250, total_gb: 494)
+    guard let key = AnswerMemory.key(for: facts) else { print("FAIL: no key"); return false }
+
+    // Before: the model says "script" → notify.
+    let before = HybridTriage(local: HelperProcessJudge(), memory: AnswerMemory(url: url), cloud: nil).decideLocally(facts).result
+    // The user taps "这类不用提醒".
+    AnswerMemory(url: url).correct(key: key, notify: false)
+    // A cloud answer later must not overwrite the user's call.
+    AnswerMemory(url: url).remember(facts, category: .unknown, source: "cloud")
+    // "Restart": a fresh memory read from disk.
+    let after = HybridTriage(local: HelperProcessJudge(), memory: AnswerMemory(url: url), cloud: nil).decideLocally(facts).result
+
+    print("纠正前：\(before?.notify == true ? "提醒" : "不提醒")（\(before?.source.rawValue ?? "-")）")
+    print("纠正并重新读取后：\(after?.notify == true ? "提醒" : "不提醒")（\(after?.source.rawValue ?? "-")）")
+    print("文件：\(FileManager.default.fileExists(atPath: url.path) ? "已保存" : "不存在")")
+    let passed = before?.notify == true && after?.notify == false && after?.source == .memory
+    print(passed ? "PASS" : "FAIL")
+    return passed
+}

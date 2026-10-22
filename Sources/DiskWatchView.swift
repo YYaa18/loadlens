@@ -7,8 +7,8 @@ final class DiskWatchWindowController: NSObject, NSWindowDelegate {
 
     func show() {
         if window == nil {
-            let hosting = NSHostingView(rootView: DiskWatchSettingsView(watcher: .shared, folders: .shared))
-            let newWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 680),
+            let hosting = NSHostingView(rootView: DiskWatchSettingsView(watcher: .shared, folders: .shared, triage: .shared, ai: .shared))
+            let newWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 760),
                                      styleMask: [.titled, .closable, .miniaturizable],
                                      backing: .buffered,
                                      defer: false)
@@ -27,6 +27,8 @@ final class DiskWatchWindowController: NSObject, NSWindowDelegate {
 struct DiskWatchSettingsView: View {
     @ObservedObject var watcher: DiskGrowthWatcher
     @ObservedObject var folders: FolderGrowthTracker
+    @ObservedObject var triage: TriageService
+    @ObservedObject var ai: AIConfigStore
     @State private var notificationsDenied = false
 
     private let windowChoices = [1, 5, 10, 30, 60]
@@ -64,27 +66,29 @@ struct DiskWatchSettingsView: View {
             }
             .disabled(!watcher.settings.enabled)
 
-            Section("最近的提醒") {
-                if watcher.recentEvents.isEmpty {
-                    Text("还没有。")
+            folderSection
+
+            triageSection
+
+            Section {
+                if triage.records.isEmpty {
+                    Text("还没有。触发提醒规则的事件都会列在这里，包括判断为不用打扰的。")
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(watcher.recentEvents) { event in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(event.date.formatted(date: .abbreviated, time: .shortened))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text(event.body)
-                                .font(.callout)
-                        }
+                    ForEach(triage.records) { record in
+                        recordRow(record)
                     }
                 }
+            } header: {
+                Text("最近的判断")
+            } footer: {
+                Text("判断错了可以直接纠正，以后同一个程序或文件夹按你的意思来；硬盘快满的提醒不受影响。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-
-            folderSection
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 680)
+        .frame(width: 480, height: 760)
     }
 
     @ViewBuilder
@@ -138,6 +142,61 @@ struct DiskWatchSettingsView: View {
                     }
                 }
             }
+        }
+    }
+
+    private var triageSection: some View {
+        Section {
+            Toggle("先判断值不值得打扰我", isOn: $triage.settings.useLocal)
+            Toggle(isOn: $triage.settings.askCloud) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("没把握时询问云端模型")
+                    Text(ai.isReady ? "使用「AI 模型设置」里的 \(ai.activePreset.name)" : "需要先在「AI 模型设置」里配置模型服务")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .disabled(!ai.isReady)
+        } header: {
+            Text("智能判断")
+        } footer: {
+            Text("判断用的是内置的 25MB 小模型，在本机运行，不联网。询问云端时只发送程序名、文件夹路径和大小，不发送文件内容；问过的答案会记在本机，同一个名字不再重复询问。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func recordRow(_ record: TriageRecord) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Text(record.notified ? "已提醒" : "未打扰")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(record.notified ? .orange : .secondary)
+                Text(record.date.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                correctionControl(record)
+            }
+            Text(record.body)
+                .font(.callout)
+            Text(record.explanation)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func correctionControl(_ record: TriageRecord) -> some View {
+        if let corrected = record.corrected {
+            Text(corrected ? "已记住：以后提醒" : "已记住：以后不提醒")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else if record.key != nil, record.source != .rule {
+            Button(record.notified ? "这类不用提醒" : "这类应该提醒") {
+                triage.correct(record.id, notify: !record.notified)
+            }
+            .controlSize(.small)
         }
     }
 

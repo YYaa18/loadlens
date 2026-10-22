@@ -29,6 +29,8 @@
 - 硬盘空间监控（齿轮 →「硬盘空间监控…」，默认关闭，规则可自定义）：
   - 空间快速减少时提醒，并说明这段时间写入最多的程序
   - 每天空闲时把家目录量一遍，某个文件夹持续变大时提醒，并尽量定位到最深的那一层子文件夹
+  - 智能判断（默认开启）：提醒前先用内置的 25MB 小模型判断值不值得打扰你，通知里写明原因；判断为不用打扰的也会列在「最近的判断」里，可以随时纠正
+  - 没把握时可以询问云端模型（默认关闭，只发送程序名、文件夹路径和大小）；问过的答案和你的纠正都记在本机
 
 **硬盘管理**（面板顶部切到「硬盘」）
 
@@ -161,6 +163,8 @@ open build/LoadLens.app                                 # 直接运行（不安�
 | `--probe-eval <模型.gguf> <分类器.json> [考题.json]` | 嵌入 + 分类器打分，并列出不同置信度门槛下的效果 |
 | `--hybrid-eval <模型.gguf> <分类器.json> <考题.json>` | 五层分诊决策的模拟（模拟云端，不联网） |
 | `--cloud-eval <考题.json>` | 把考题发给已配置的云端模型打分（会联网、产生少量费用） |
+| `--triage-check` | 用应用内置的模型判断几个典型事件，检查打包和加载是否正常 |
+| `--memory-selftest` | 自测「纠正后重启仍然记得、且优先于云端答案」 |
 | `--folder-scan` | 把家目录量一遍，打印用时和最大的文件夹（不保存） |
 | `--folder-growth-selftest` | 在临时目录里自测「文件夹持续变大」的定位和去重逻辑，通过时打印 PASS |
 | `--preview-window [秒]` | 把面板放在普通窗口里显示，便于截图 |
@@ -233,12 +237,13 @@ Sources/
   Triage.swift               硬盘事件分诊：类别定义与提醒规则、提示词、语法约束
   DecisionModel.swift        嵌入模型 + 线性分类器（固定答案、带置信度）
   HybridTriage.swift         五层分诊决策：硬规则、记忆、本地模型、云端、兜底
+  TriageService.swift        把提醒接入分诊：设置、最近的判断、纠正；模型在子进程里运行
   MarkdownText.swift         AI 回复的 Markdown 渲染
   Keychain.swift             API Key 存取
   LoginItem.swift            开机自启
   Notifier.swift             系统通知
   CLI.swift                  终端体检与开发用预览
-Resources/                   图标
+Resources/                   图标；triage/ 里是内置的分诊模型、分类器和第三方许可声明
 train/                       本地分诊模型的数据生成、训练与评测（见 train/README.md）
 eval/                        分诊考题（模拟考与冻结的测试集）
 tools/

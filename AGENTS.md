@@ -142,6 +142,13 @@ See the README's "开发用命令行参数" section for the full list.
 - UI text is Simplified Chinese, written for non-technical users. Code comments are English.
 - Stay permission-free: no sudo, no Accessibility / Screen Recording, never read file contents
   (sizes and metadata only).
+- Disk alerts go through `TriageService` before notifying. The bundled model
+  (`Resources/triage/`, bge-small-zh 8-bit + `probe.json`) runs in a short-lived helper process
+  (`LoadLens --triage-judge`), never inside the menu bar app: initialising llama.cpp alone costs
+  ~94MB that is not returned while the process lives. Keep it that way. `probe.json` only fits that
+  exact model file; retrain it (see `train/README.md`) if the model changes.
+- Asking the cloud model is opt-in (off by default) and sends only event descriptions
+  (process / folder names and sizes). User corrections in the answer memory always win.
 - AI tools in `Sources/AITools.swift` must stay **read-only**. Never add tools that delete files,
   kill processes or change settings.
 - Keep it light: the app idles at ~0.2% CPU (panel closed) and ~0.7% (panel open). Avoid SwiftUI

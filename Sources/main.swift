@@ -93,6 +93,18 @@ if let index = CommandLine.arguments.firstIndex(of: "--embed-text"), CommandLine
                       texts: Array(args[(index + 3)...])) ? 0 : 1)
 }
 
+if CommandLine.arguments.contains("--memory-selftest") {
+    exit(runMemorySelfTest() ? 0 : 1)
+}
+
+if CommandLine.arguments.contains("--triage-judge") {
+    exit(runTriageJudge() ? 0 : 1)
+}
+
+if CommandLine.arguments.contains("--triage-check") {
+    exit(runTriageCheck() ? 0 : 1)
+}
+
 if let index = CommandLine.arguments.firstIndex(of: "--cloud-eval"), CommandLine.arguments.count > index + 1 {
     let ok = MainActor.assumeIsolated { runCloudEval(casesPath: CommandLine.arguments[index + 1]) }
     exit(ok ? 0 : 1)

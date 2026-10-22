@@ -18,7 +18,10 @@ struct DiskWatchSettings: Codable, Equatable {
 /// One alert: how much space went, how fast, and who wrote the most meanwhile.
 struct DiskGrowthEvent: Identifiable {
     struct Writer {
+        /// Shown to the user, e.g. "Xcode 里的 Python".
         let name: String
+        let app: String
+        let process: String
         let bytes: UInt64
     }
 
@@ -27,7 +30,17 @@ struct DiskGrowthEvent: Identifiable {
     let dropBytes: UInt64
     let span: TimeInterval
     let freeBytes: UInt64
+    let totalBytes: UInt64
     let writers: [Writer]
+
+    /// What the triage model reads.
+    var facts: DiskEventFacts {
+        DiskEventFacts(minutes: max(Int((span / 60).rounded()), 1),
+                       drop_gb: Double(dropBytes) / 1e9,
+                       writers: writers.map { .init(app: $0.app, process: $0.process, gb: Double($0.bytes) / 1e9) },
+                       free_gb: Double(freeBytes) / 1e9,
+                       total_gb: Double(totalBytes) / 1e9)
+    }
 
     var spanText: String {
         let minutes = Int((span / 60).rounded())
@@ -157,6 +170,7 @@ final class DiskGrowthWatcher: ObservableObject {
                                     dropBytes: drop,
                                     span: max(status.span, 1),
                                     freeBytes: free,
+                                    totalBytes: Self.readTotalSpace() ?? 0,
                                     writers: topWriters(now: now, since: peak.date))
         lastAlert = now
         // Start over, so the same drop does not count again after the cooldown.
@@ -169,7 +183,7 @@ final class DiskGrowthWatcher: ObservableObject {
             if let onEvent = self.onEvent {
                 onEvent(event)
             } else {
-                Notifier.shared.send(title: event.title, body: event.body)
+                TriageService.shared.handle(facts: event.facts, title: event.title, body: event.body)
             }
         }
         return status
@@ -183,6 +197,13 @@ final class DiskGrowthWatcher: ObservableObject {
         guard let values = try? url.resourceValues(forKeys: [.volumeAvailableCapacityKey]),
               let free = values.volumeAvailableCapacity, free >= 0 else { return nil }
         return UInt64(free)
+    }
+
+    static func readTotalSpace() -> UInt64? {
+        let url = URL(fileURLWithPath: "/")
+        guard let total = try? url.resourceValues(forKeys: [.volumeTotalCapacityKey]).volumeTotalCapacity,
+              total > 0 else { return nil }
+        return UInt64(total)
     }
 
     private func takeWriteSnapshot(_ now: Date) -> WriteSnapshot {
@@ -252,7 +273,7 @@ final class DiskGrowthWatcher: ObservableObject {
                 let sameName = app.lowercased().contains(process.lowercased())
                     || process.lowercased().contains(app.lowercased())
                 return DiskGrowthEvent.Writer(name: sameName ? app : "\(app) 里的 \(process)",
-                                              bytes: UInt64(entry.bytes))
+                                              app: app, process: process, bytes: UInt64(entry.bytes))
             }
     }
 }
