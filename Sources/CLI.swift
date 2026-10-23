@@ -783,3 +783,55 @@ func runTriageLogSelfTest() -> Bool {
     print(passed ? "PASS" : "FAIL")
     return passed
 }
+
+/// `--redact-demo`: shows, on this Mac's real data, what the cloud would see with personal
+/// names hidden, and that the model's coded reply is turned back into real names. Sends nothing.
+func runRedactDemo() -> Bool {
+    let redactor = Redactor()
+    func run(_ name: String, _ args: [String: Any]) -> String {
+        var out: String?
+        Task { out = await AITools.execute(name, args) }
+        while out == nil { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
+        return out ?? ""
+    }
+    let question = "我的 \(NSHomeDirectory())/Documents 和 ~/Downloads 里有什么大文件？电脑名是 \(Host.current().localizedName ?? "")，有问题发邮件到 test.user@example.com"
+    print("① 你的问题")
+    print("   原文：\(question)")
+    print("   发出：\(redactor.redactText(question))\n")
+
+    let raw = run("analyze_folder", ["target": "downloads", "limit": 3])
+    let sent = redactor.redactToolResult(name: "analyze_folder", arguments: ["target": "downloads"], result: raw)
+    print("② 工具结果（下载文件夹）")
+    print("   原文：\(raw.prefix(300))…")
+    print("   发出：\(sent.prefix(300))…\n")
+
+    // A reply the model might write, using the codes it was given.
+    let codes = sent.components(separatedBy: "【").dropFirst().compactMap { $0.components(separatedBy: "】").first }.prefix(2)
+    let reply = "建议删除" + codes.map { "【\($0)】638 MB" }.joined(separator: "和") + "，它们是装完就没用的安装包。"
+    print("③ 模型的回答")
+    print("   收到：\(reply)")
+    var restorer = StreamRestorer()
+    // Feed it in small pieces, as streaming does, to check codes split across pieces.
+    var shown = ""
+    var index = reply.startIndex
+    while index < reply.endIndex {
+        let next = reply.index(index, offsetBy: 3, limitedBy: reply.endIndex) ?? reply.endIndex
+        shown += restorer.push(String(reply[index..<next]), with: redactor)
+        index = next
+    }
+    shown += restorer.flush(with: redactor)
+    print("   显示：\(shown)\n")
+
+    let coded = redactor.redactPath(NSHomeDirectory() + "/Desktop/loadlens/notes")
+    let back = redactor.restoreArguments(["path": coded])["path"] as? String ?? ""
+    print("④ 模型要求查看一个打了码的文件夹")
+    print("   模型给出：\(coded)  →  本机实际查看：\(back)")
+    print("\n本次一共隐去 \(redactor.hiddenCount) 处")
+    // Real names must not leave the Mac, must come back in the reply, and coded paths must resolve.
+    let firstName = (try? JSONSerialization.jsonObject(with: Data(raw.utf8)) as? [String: Any])
+        .flatMap { ($0["items"] as? [[String: Any]])?.first?["name"] as? String } ?? ""
+    let passed = !firstName.isEmpty && !sent.contains(firstName) && shown.contains(firstName)
+        && !shown.contains("【") && shown.contains("\(firstName) 638 MB") && back == "~/Desktop/loadlens/notes"
+    print(passed ? "PASS" : "FAIL")
+    return passed
+}

@@ -141,7 +141,7 @@ struct LLMCloudJudge: CloudJudge {
     func category(for facts: DiskEventFacts) async throws -> Triage.Category {
         var reply = ""
         try await LLMClient.shared.stream(system: Triage.categoryPrompt,
-                                          messages: [LLMMessage(role: "user", content: facts.description)],
+                                          messages: [LLMMessage(role: "user", content: Redactor().redactText(facts.description))],
                                           endpoint: AIConfigStore.shared.endpoint(),
                                           // Generous: models that "think" first spend part of this before answering.
                                           maxTokens: 1024) { reply += $0 }
