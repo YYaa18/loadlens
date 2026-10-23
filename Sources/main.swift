@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import UserNotifications
 import Darwin
 
 if CommandLine.arguments.contains("--keychain-test") {
@@ -54,6 +55,133 @@ if let index = CommandLine.arguments.firstIndex(of: "--tool-test") {
         while output == nil { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
         print(output ?? "")
     }
+    exit(0)
+}
+
+// Developer check: print notification permission and send one test notification.
+if CommandLine.arguments.contains("--notify-test") {
+    let center = UNUserNotificationCenter.current()
+    var done = false
+    center.getNotificationSettings { settings in
+        let status: String
+        switch settings.authorizationStatus {
+        case .authorized: status = "authorized"
+        case .denied: status = "denied"
+        case .notDetermined: status = "notDetermined"
+        case .provisional: status = "provisional"
+        default: status = "other(\(settings.authorizationStatus.rawValue))"
+        }
+        print("authorization: \(status)  alertStyle: \(settings.alertStyle.rawValue)  alerts: \(settings.alertSetting.rawValue)")
+        Notifier.shared.send(title: "负载侦探测试通知", body: "看到这条，说明通知能正常弹出。")
+        done = true
+    }
+    while !done { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+    RunLoop.main.run(until: Date().addingTimeInterval(1))
+    exit(0)
+}
+
+if let index = CommandLine.arguments.firstIndex(of: "--llm-test"), CommandLine.arguments.count > index + 1 {
+    runLocalModelTest(path: (CommandLine.arguments[index + 1] as NSString).expandingTildeInPath)
+    exit(0)
+}
+
+// Developer check: --embed-text <model.gguf> <mean|last|cls> <text>… prints one JSON vector per text.
+if let index = CommandLine.arguments.firstIndex(of: "--embed-text"), CommandLine.arguments.count > index + 3 {
+    let args = CommandLine.arguments
+    exit(runEmbedText(modelPath: (args[index + 1] as NSString).expandingTildeInPath,
+                      pooling: EmbeddingModel.Pooling(rawValue: args[index + 2]) ?? .mean,
+                      texts: Array(args[(index + 3)...])) ? 0 : 1)
+}
+
+if let index = CommandLine.arguments.firstIndex(of: "--triage-log") {
+    let args = CommandLine.arguments
+    let ok = MainActor.assumeIsolated { runTriageLog(output: args.count > index + 1 ? args[index + 1] : nil) }
+    exit(ok ? 0 : 1)
+}
+
+if CommandLine.arguments.contains("--triage-log-selftest") {
+    let ok = MainActor.assumeIsolated { runTriageLogSelfTest() }
+    exit(ok ? 0 : 1)
+}
+
+if CommandLine.arguments.contains("--memory-selftest") {
+    exit(runMemorySelfTest() ? 0 : 1)
+}
+
+if CommandLine.arguments.contains("--triage-judge") {
+    exit(runTriageJudge() ? 0 : 1)
+}
+
+if CommandLine.arguments.contains("--triage-check") {
+    exit(runTriageCheck() ? 0 : 1)
+}
+
+if let index = CommandLine.arguments.firstIndex(of: "--cloud-eval"), CommandLine.arguments.count > index + 1 {
+    let ok = MainActor.assumeIsolated { runCloudEval(casesPath: CommandLine.arguments[index + 1]) }
+    exit(ok ? 0 : 1)
+}
+
+if let index = CommandLine.arguments.firstIndex(of: "--hybrid-eval"), CommandLine.arguments.count > index + 3 {
+    let args = CommandLine.arguments
+    func value(_ flag: String) -> String? { args.firstIndex(of: flag).flatMap { args.count > $0 + 1 ? args[$0 + 1] : nil } }
+    let ok = runHybridEval(modelPath: (args[index + 1] as NSString).expandingTildeInPath, probePath: args[index + 2],
+                           casesPath: args[index + 3], passes: value("--passes").flatMap(Int.init) ?? 2,
+                           threshold: value("--threshold").flatMap(Double.init) ?? 0.7,
+                           useCloud: !args.contains("--no-cloud"))
+    exit(ok ? 0 : 1)
+}
+
+if let index = CommandLine.arguments.firstIndex(of: "--probe-eval"), CommandLine.arguments.count > index + 2 {
+    let args = CommandLine.arguments
+    exit(runProbeEval(modelPath: (args[index + 1] as NSString).expandingTildeInPath, probePath: args[index + 2],
+                      casesPath: args.count > index + 3 ? args[index + 3] : "eval/triage-test.json") ? 0 : 1)
+}
+
+if let index = CommandLine.arguments.firstIndex(of: "--embed-export"), CommandLine.arguments.count > index + 3 {
+    let args = CommandLine.arguments
+    let pooling: EmbeddingModel.Pooling = args.firstIndex(of: "--pooling").flatMap {
+        args.count > $0 + 1 ? EmbeddingModel.Pooling(rawValue: args[$0 + 1]) : nil
+    } ?? .mean
+    let instruction = args.firstIndex(of: "--instruction").flatMap { args.count > $0 + 1 ? args[$0 + 1] : nil } ?? ""
+    exit(runEmbedExport(modelPath: (args[index + 1] as NSString).expandingTildeInPath, input: args[index + 2],
+                        output: args[index + 3], pooling: pooling, instruction: instruction,
+                        lowercase: args.contains("--lowercase"), namesOnly: args.contains("--names-only")) ? 0 : 1)
+}
+
+if let index = CommandLine.arguments.firstIndex(of: "--triage-export"), CommandLine.arguments.count > index + 2 {
+    exit(runTriageExport(input: CommandLine.arguments[index + 1], output: CommandLine.arguments[index + 2]) ? 0 : 1)
+}
+
+if let index = CommandLine.arguments.firstIndex(of: "--triage-eval"), CommandLine.arguments.count > index + 1 {
+    let args = CommandLine.arguments
+    let positional = args[(index + 1)...].filter { !$0.hasPrefix("--") && !["v1", "v2"].contains($0) }
+    var options = Triage.Options()
+    if let i = args.firstIndex(of: "--prompt"), args.count > i + 1, let version = Triage.Options.PromptVersion(rawValue: args[i + 1]) {
+        options.prompt = version
+    }
+    options.reasonFirst = args.contains("--reason-first")
+    options.mode = args.contains("--direct") ? .direct : .category
+    options.useGrammar = !args.contains("--no-grammar")
+    let modelPath = (positional.first.map { ($0 as NSString).expandingTildeInPath }) ?? ""
+    let casesPath = positional.dropFirst().first ?? "eval/triage-cases.json"
+    exit(runTriageEval(modelPath: modelPath, casesPath: casesPath, options: options) ? 0 : 1)
+}
+
+if CommandLine.arguments.contains("--folder-growth-selftest") {
+    exit(runFolderGrowthSelfTest() ? 0 : 1)
+}
+
+if CommandLine.arguments.contains("--folder-scan") {
+    runFolderScan()
+    exit(0)
+}
+
+if let index = CommandLine.arguments.firstIndex(of: "--disk-watch") {
+    let args = CommandLine.arguments
+    func arg(_ offset: Int) -> String? { args.count > index + offset ? args[index + offset] : nil }
+    runDiskWatchTest(seconds: arg(1).flatMap(Double.init) ?? 60,
+                     thresholdGB: arg(2).flatMap(Double.init) ?? 5,
+                     windowMinutes: arg(3).flatMap(Int.init) ?? 10)
     exit(0)
 }
 

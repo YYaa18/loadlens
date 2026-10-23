@@ -80,6 +80,7 @@ final class Monitor: ObservableObject {
             self.capture(full: true)
         }
         schedule(every: 6)
+        FolderGrowthTracker.shared.start()
     }
 
     func panelDidOpen() {
@@ -188,6 +189,7 @@ final class Monitor: ObservableObject {
         let userSamples = tracker.scan(includeDisk: full)
         let io = diskIO.sample()
         let disk = readDiskState(full: full, read: io.read, write: io.write)
+        DiskGrowthWatcher.shared.observe()
         var samples = userSamples
         if full {
             let now = Date()

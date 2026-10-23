@@ -1,0 +1,1573 @@
+{
+ "about": "独立测试集 2：第三轮补充系统类数据之后才生成，名字与训练集、验证集、测试集 1、模拟考都不重叠，用作第三轮的最终裁判。",
+ "cases": [
+  {
+   "id": "U01",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 12.1,
+    "free_gb": 84,
+    "total_gb": 494,
+    "writers": []
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "U02",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 4.4,
+    "free_gb": 313,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "模型管理",
+      "process": "modelmanagerd",
+      "gb": 4.3
+     }
+    ]
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "U03",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 12.7,
+    "free_gb": 272,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "Affinity Photo 2",
+      "process": "Affinity Photo 2",
+      "gb": 11.9
+     },
+     {
+      "app": "系统安装服务",
+      "process": "system_installd",
+      "gb": 1.1
+     }
+    ]
+   },
+   "category": "user_activity",
+   "expect_notify": false
+  },
+  {
+   "id": "U04",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 30,
+    "path": "~/Library/Application Support/ai.ostra.monitor",
+    "owner": null,
+    "grown_gb": 15.4,
+    "size_gb": 24.9,
+    "free_gb": 923,
+    "total_gb": 1995
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "U05",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 30,
+    "drop_gb": 4.1,
+    "free_gb": 148,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "Rocket.Chat",
+      "process": "Rocket.Chat",
+      "gb": 3.8
+     }
+    ]
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "U06",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 6.8,
+    "free_gb": 209,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "Earthly",
+      "process": "earthly",
+      "gb": 6.6
+     },
+     {
+      "app": "Spotlight 知识",
+      "process": "spotlightknowledged",
+      "gb": 0.5
+     }
+    ]
+   },
+   "category": "dev_work",
+   "expect_notify": false
+  },
+  {
+   "id": "U07",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 30,
+    "path": "~/Library/CloudStorage/pCloud",
+    "owner": "pCloud",
+    "grown_gb": 21.3,
+    "size_gb": 22.3,
+    "free_gb": 185,
+    "total_gb": 494
+   },
+   "category": "user_files",
+   "expect_notify": false
+  },
+  {
+   "id": "U08",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Documents/Scans",
+    "owner": null,
+    "grown_gb": 12.9,
+    "size_gb": 46.4,
+    "free_gb": 95,
+    "total_gb": 245
+   },
+   "category": "user_files",
+   "expect_notify": false
+  },
+  {
+   "id": "U09",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 14,
+    "path": "~/Library/Trial",
+    "owner": null,
+    "grown_gb": 22.6,
+    "size_gb": 38.0,
+    "free_gb": 153,
+    "total_gb": 245
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "U10",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Logs/WireGuard",
+    "owner": "WireGuard",
+    "grown_gb": 20.5,
+    "size_gb": 23.1,
+    "free_gb": 167,
+    "total_gb": 494
+   },
+   "category": "log",
+   "expect_notify": true
+  },
+  {
+   "id": "U11",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 24.5,
+    "free_gb": 353,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "模型管理",
+      "process": "modelmanagerd",
+      "gb": 24.3
+     }
+    ]
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "U12",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 14,
+    "path": "~/Library/Application Support/Threema",
+    "owner": "Threema",
+    "grown_gb": 18.2,
+    "size_gb": 57.5,
+    "free_gb": 598,
+    "total_gb": 994
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "U13",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/xyz.korvi.relay",
+    "owner": null,
+    "grown_gb": 20.7,
+    "size_gb": 44.7,
+    "free_gb": 30,
+    "total_gb": 245
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "U14",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/.cache/prisma",
+    "owner": null,
+    "grown_gb": 7.7,
+    "size_gb": 26.4,
+    "free_gb": 187,
+    "total_gb": 994
+   },
+   "category": "cache",
+   "expect_notify": true
+  },
+  {
+   "id": "U15",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 3,
+    "path": "~/Library/IntelligencePlatform",
+    "owner": null,
+    "grown_gb": 20.4,
+    "size_gb": 57.8,
+    "free_gb": 147,
+    "total_gb": 245
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "U16",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/.cache/prisma",
+    "owner": null,
+    "grown_gb": 23.2,
+    "size_gb": 39.8,
+    "free_gb": 130,
+    "total_gb": 994
+   },
+   "category": "cache",
+   "expect_notify": true
+  },
+  {
+   "id": "U17",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 3,
+    "path": "~/Library/Caches/org.videolan.vlc",
+    "owner": "VLC",
+    "grown_gb": 14.2,
+    "size_gb": 37.7,
+    "free_gb": 69,
+    "total_gb": 245
+   },
+   "category": "cache",
+   "expect_notify": true
+  },
+  {
+   "id": "U18",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Application Support/com.apple.geod",
+    "owner": null,
+    "grown_gb": 3.3,
+    "size_gb": 7.3,
+    "free_gb": 202,
+    "total_gb": 494
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "U19",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Caches/org.videolan.vlc",
+    "owner": "VLC",
+    "grown_gb": 6.9,
+    "size_gb": 37.8,
+    "free_gb": 138,
+    "total_gb": 494
+   },
+   "category": "cache",
+   "expect_notify": true
+  },
+  {
+   "id": "U20",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 30,
+    "path": "~/Library/xyz.zamp.engine",
+    "owner": null,
+    "grown_gb": 15.4,
+    "size_gb": 47.9,
+    "free_gb": 357,
+    "total_gb": 994
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "U21",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 30,
+    "drop_gb": 25.0,
+    "free_gb": 91,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "Nova",
+      "process": "Nova",
+      "gb": 23.5
+     },
+     {
+      "app": "位置服务",
+      "process": "locationd",
+      "gb": 2.3
+     }
+    ]
+   },
+   "category": "dev_work",
+   "expect_notify": false
+  },
+  {
+   "id": "U22",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Application Support/Threema",
+    "owner": "Threema",
+    "grown_gb": 24.2,
+    "size_gb": 60.8,
+    "free_gb": 326,
+    "total_gb": 494
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "U23",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Application Support/Joplin",
+    "owner": "Joplin",
+    "grown_gb": 10.5,
+    "size_gb": 29.8,
+    "free_gb": 42,
+    "total_gb": 494
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "U24",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 30,
+    "path": "~/Library/Application Support/Joplin",
+    "owner": "Joplin",
+    "grown_gb": 10.6,
+    "size_gb": 40.7,
+    "free_gb": 116,
+    "total_gb": 245
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "U25",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 30,
+    "drop_gb": 18.7,
+    "free_gb": 384,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "Free Download Manager",
+      "process": "fdm",
+      "gb": 17.2
+     }
+    ]
+   },
+   "category": "user_activity",
+   "expect_notify": false
+  },
+  {
+   "id": "U26",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 30,
+    "drop_gb": 19.4,
+    "free_gb": 642,
+    "total_gb": 1995,
+    "writers": [
+     {
+      "app": "Android Emulator",
+      "process": "qemu-system-aarch64",
+      "gb": 18.8
+     }
+    ]
+   },
+   "category": "dev_work",
+   "expect_notify": false
+  },
+  {
+   "id": "U27",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 30,
+    "path": "~/.cache/prisma",
+    "owner": null,
+    "grown_gb": 29.2,
+    "size_gb": 61.7,
+    "free_gb": 817,
+    "total_gb": 1995
+   },
+   "category": "cache",
+   "expect_notify": true
+  },
+  {
+   "id": "U28",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 30,
+    "path": "~/Library/Application Support/Threema",
+    "owner": "Threema",
+    "grown_gb": 23.4,
+    "size_gb": 48.9,
+    "free_gb": 77,
+    "total_gb": 994
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "U29",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 30,
+    "path": "~/Library/xyz.ostra.engine",
+    "owner": null,
+    "grown_gb": 27.0,
+    "size_gb": 30.9,
+    "free_gb": 195,
+    "total_gb": 494
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "U30",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 19.6,
+    "free_gb": 647,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "Affinity Photo 2",
+      "process": "Affinity Photo 2",
+      "gb": 18.2
+     }
+    ]
+   },
+   "category": "user_activity",
+   "expect_notify": false
+  },
+  {
+   "id": "U31",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/.cache/prisma",
+    "owner": null,
+    "grown_gb": 9.8,
+    "size_gb": 49.0,
+    "free_gb": 201,
+    "total_gb": 994
+   },
+   "category": "cache",
+   "expect_notify": true
+  },
+  {
+   "id": "U32",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 3,
+    "path": "~/Library/ai.zamp.relay",
+    "owner": null,
+    "grown_gb": 9.4,
+    "size_gb": 21.9,
+    "free_gb": 33,
+    "total_gb": 245
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "U33",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 25.8,
+    "free_gb": 273,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "Mattermost",
+      "process": "Mattermost",
+      "gb": 24.2
+     }
+    ]
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "U34",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 30,
+    "drop_gb": 22.8,
+    "free_gb": 1155,
+    "total_gb": 1995,
+    "writers": [
+     {
+      "app": "Joplin",
+      "process": "Joplin",
+      "gb": 20.8
+     }
+    ]
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "U35",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 3,
+    "path": "~/Library/Application Support/com.apple.geod",
+    "owner": null,
+    "grown_gb": 16.0,
+    "size_gb": 25.3,
+    "free_gb": 730,
+    "total_gb": 1995
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "U36",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 8.6,
+    "free_gb": 294,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "系统安装服务",
+      "process": "system_installd",
+      "gb": 8.3
+     }
+    ]
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "U37",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Application Support/xyz.korvi.engine",
+    "owner": null,
+    "grown_gb": 10.2,
+    "size_gb": 36.8,
+    "free_gb": 1117,
+    "total_gb": 1995
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "U38",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 23.1,
+    "free_gb": 334,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "Nushell",
+      "process": "nu",
+      "gb": 21.6
+     }
+    ]
+   },
+   "category": "script",
+   "expect_notify": true
+  },
+  {
+   "id": "U39",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 21.7,
+    "free_gb": 261,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "Rocket.Chat",
+      "process": "Rocket.Chat",
+      "gb": 20.5
+     }
+    ]
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "U40",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 7.3,
+    "free_gb": 972,
+    "total_gb": 1995,
+    "writers": [
+     {
+      "app": "racket",
+      "process": "racket",
+      "gb": 7.0
+     },
+     {
+      "app": "模型管理",
+      "process": "modelmanagerd",
+      "gb": 1.3
+     }
+    ]
+   },
+   "category": "script",
+   "expect_notify": true
+  },
+  {
+   "id": "U41",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 4.3,
+    "free_gb": 183,
+    "total_gb": 1995,
+    "writers": [
+     {
+      "app": "ScreenFlow",
+      "process": "ScreenFlow",
+      "gb": 4.0
+     }
+    ]
+   },
+   "category": "user_activity",
+   "expect_notify": false
+  },
+  {
+   "id": "U42",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Logs/Viscosity",
+    "owner": "Viscosity",
+    "grown_gb": 10.7,
+    "size_gb": 16.2,
+    "free_gb": 254,
+    "total_gb": 994
+   },
+   "category": "log",
+   "expect_notify": true
+  },
+  {
+   "id": "U43",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 19.4,
+    "free_gb": 315,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "Affinity Photo 2",
+      "process": "Affinity Photo 2",
+      "gb": 18.7
+     },
+     {
+      "app": "Spotlight 知识",
+      "process": "spotlightknowledged",
+      "gb": 1.2
+     }
+    ]
+   },
+   "category": "user_activity",
+   "expect_notify": false
+  },
+  {
+   "id": "U44",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Logs/Viscosity",
+    "owner": "Viscosity",
+    "grown_gb": 20.3,
+    "size_gb": 28.0,
+    "free_gb": 50,
+    "total_gb": 245
+   },
+   "category": "log",
+   "expect_notify": true
+  },
+  {
+   "id": "U45",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 22.9,
+    "free_gb": 1320,
+    "total_gb": 1995,
+    "writers": [
+     {
+      "app": "guile",
+      "process": "guile",
+      "gb": 20.9
+     }
+    ]
+   },
+   "category": "script",
+   "expect_notify": true
+  },
+  {
+   "id": "U46",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 30,
+    "drop_gb": 10.2,
+    "free_gb": 126,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "Nova",
+      "process": "Nova",
+      "gb": 9.4
+     }
+    ]
+   },
+   "category": "dev_work",
+   "expect_notify": false
+  },
+  {
+   "id": "U47",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/CloudStorage/pCloud",
+    "owner": "pCloud",
+    "grown_gb": 20.3,
+    "size_gb": 23.9,
+    "free_gb": 1139,
+    "total_gb": 1995
+   },
+   "category": "user_files",
+   "expect_notify": false
+  },
+  {
+   "id": "U48",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 3,
+    "path": "~/Music/Audio Music Apps",
+    "owner": null,
+    "grown_gb": 14.5,
+    "size_gb": 41.6,
+    "free_gb": 219,
+    "total_gb": 494
+   },
+   "category": "user_files",
+   "expect_notify": false
+  },
+  {
+   "id": "U49",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Application Support/Mattermost/logs",
+    "owner": "Mattermost",
+    "grown_gb": 22.2,
+    "size_gb": 36.9,
+    "free_gb": 85,
+    "total_gb": 994
+   },
+   "category": "log",
+   "expect_notify": true
+  },
+  {
+   "id": "U50",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 9.3,
+    "free_gb": 115,
+    "total_gb": 245,
+    "writers": []
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "U51",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 16.4,
+    "free_gb": 285,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "Shotcut",
+      "process": "shotcut",
+      "gb": 16.3
+     },
+     {
+      "app": "诊断服务",
+      "process": "diagnosticd",
+      "gb": 3.6
+     }
+    ]
+   },
+   "category": "user_activity",
+   "expect_notify": false
+  },
+  {
+   "id": "U52",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 10.5,
+    "free_gb": 390,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "诊断服务",
+      "process": "diagnosticd",
+      "gb": 9.7
+     }
+    ]
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "U53",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 3,
+    "path": "~/Library/Application Support/Joplin",
+    "owner": "Joplin",
+    "grown_gb": 17.6,
+    "size_gb": 24.3,
+    "free_gb": 51,
+    "total_gb": 245
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "U54",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 14,
+    "path": "~/Library/Application Support/Threema",
+    "owner": "Threema",
+    "grown_gb": 13.6,
+    "size_gb": 38.3,
+    "free_gb": 694,
+    "total_gb": 994
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "U55",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 7.9,
+    "free_gb": 109,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "Mattermost",
+      "process": "Mattermost",
+      "gb": 7.8
+     },
+     {
+      "app": "模型管理",
+      "process": "modelmanagerd",
+      "gb": 0.8
+     }
+    ]
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "U56",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 14.8,
+    "free_gb": 139,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "Threema",
+      "process": "Threema",
+      "gb": 14.3
+     }
+    ]
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "U57",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/IntelligencePlatform",
+    "owner": null,
+    "grown_gb": 23.5,
+    "size_gb": 52.4,
+    "free_gb": 125,
+    "total_gb": 245
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "U58",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/.cache/prisma",
+    "owner": null,
+    "grown_gb": 12.8,
+    "size_gb": 21.3,
+    "free_gb": 717,
+    "total_gb": 1995
+   },
+   "category": "cache",
+   "expect_notify": true
+  },
+  {
+   "id": "U59",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 11.0,
+    "free_gb": 46,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "Nova",
+      "process": "Nova",
+      "gb": 10.3
+     },
+     {
+      "app": "Spotlight 知识",
+      "process": "spotlightknowledged",
+      "gb": 2.0
+     }
+    ]
+   },
+   "category": "dev_work",
+   "expect_notify": false
+  },
+  {
+   "id": "U60",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 3,
+    "path": "~/Library/Logs/WireGuard",
+    "owner": "WireGuard",
+    "grown_gb": 28.0,
+    "size_gb": 67.2,
+    "free_gb": 932,
+    "total_gb": 1995
+   },
+   "category": "log",
+   "expect_notify": true
+  },
+  {
+   "id": "U61",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 14.8,
+    "free_gb": 549,
+    "total_gb": 1995,
+    "writers": [
+     {
+      "app": "xyz.ostra.relay",
+      "process": "xyz.ostra.relay",
+      "gb": 13.9
+     }
+    ]
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "U62",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 14,
+    "path": "~/Library/Caches/org.videolan.vlc",
+    "owner": "VLC",
+    "grown_gb": 26.0,
+    "size_gb": 65.0,
+    "free_gb": 914,
+    "total_gb": 1995
+   },
+   "category": "cache",
+   "expect_notify": true
+  },
+  {
+   "id": "U63",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 30,
+    "path": "~/Library/Logs/Viscosity",
+    "owner": "Viscosity",
+    "grown_gb": 28.7,
+    "size_gb": 63.9,
+    "free_gb": 107,
+    "total_gb": 494
+   },
+   "category": "log",
+   "expect_notify": true
+  },
+  {
+   "id": "U64",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 16.2,
+    "free_gb": 420,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "OstraRelay",
+      "process": "OstraRelay",
+      "gb": 15.1
+     }
+    ]
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "U65",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 30,
+    "drop_gb": 6.0,
+    "free_gb": 422,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "Anytype",
+      "process": "Anytype",
+      "gb": 5.9
+     }
+    ]
+   },
+   "category": "app_data",
+   "expect_notify": true
+  },
+  {
+   "id": "U66",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Application Support/Mattermost/logs",
+    "owner": "Mattermost",
+    "grown_gb": 18.6,
+    "size_gb": 33.0,
+    "free_gb": 88,
+    "total_gb": 994
+   },
+   "category": "log",
+   "expect_notify": true
+  },
+  {
+   "id": "U67",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 14.9,
+    "free_gb": 1230,
+    "total_gb": 1995,
+    "writers": [
+     {
+      "app": "Nushell",
+      "process": "nu",
+      "gb": 14.1
+     }
+    ]
+   },
+   "category": "script",
+   "expect_notify": true
+  },
+  {
+   "id": "U68",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 7.0,
+    "free_gb": 84,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "Photomator",
+      "process": "Photomator",
+      "gb": 6.4
+     }
+    ]
+   },
+   "category": "user_activity",
+   "expect_notify": false
+  },
+  {
+   "id": "U69",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 30,
+    "drop_gb": 6.2,
+    "free_gb": 168,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "racket",
+      "process": "racket",
+      "gb": 5.8
+     },
+     {
+      "app": "诊断服务",
+      "process": "diagnosticd",
+      "gb": 1.2
+     }
+    ]
+   },
+   "category": "script",
+   "expect_notify": true
+  },
+  {
+   "id": "U70",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 7.6,
+    "free_gb": 483,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "Android Emulator",
+      "process": "qemu-system-aarch64",
+      "gb": 7.0
+     }
+    ]
+   },
+   "category": "dev_work",
+   "expect_notify": false
+  },
+  {
+   "id": "U71",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 13.5,
+    "free_gb": 136,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "Android Emulator",
+      "process": "qemu-system-aarch64",
+      "gb": 12.8
+     }
+    ]
+   },
+   "category": "dev_work",
+   "expect_notify": false
+  },
+  {
+   "id": "U72",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/ai.korvi.engine",
+    "owner": null,
+    "grown_gb": 17.9,
+    "size_gb": 38.5,
+    "free_gb": 196,
+    "total_gb": 1995
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "U73",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 20.6,
+    "free_gb": 255,
+    "total_gb": 1995,
+    "writers": [
+     {
+      "app": "Android Emulator",
+      "process": "qemu-system-aarch64",
+      "gb": 19.3
+     },
+     {
+      "app": "Spotlight 知识",
+      "process": "spotlightknowledged",
+      "gb": 2.3
+     }
+    ]
+   },
+   "category": "dev_work",
+   "expect_notify": false
+  },
+  {
+   "id": "U74",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 3,
+    "path": "~/Music/Audio Music Apps",
+    "owner": null,
+    "grown_gb": 11.5,
+    "size_gb": 48.2,
+    "free_gb": 147,
+    "total_gb": 245
+   },
+   "category": "user_files",
+   "expect_notify": false
+  },
+  {
+   "id": "U75",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Logs/WireGuard",
+    "owner": "WireGuard",
+    "grown_gb": 11.5,
+    "size_gb": 34.9,
+    "free_gb": 166,
+    "total_gb": 994
+   },
+   "category": "log",
+   "expect_notify": true
+  },
+  {
+   "id": "U76",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 10.1,
+    "free_gb": 276,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "系统安装服务",
+      "process": "system_installd",
+      "gb": 10.0
+     }
+    ]
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "U77",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/Trial",
+    "owner": null,
+    "grown_gb": 25.7,
+    "size_gb": 50.9,
+    "free_gb": 105,
+    "total_gb": 994
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "U78",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 3,
+    "path": "~/Library/CloudStorage/pCloud",
+    "owner": "pCloud",
+    "grown_gb": 3.8,
+    "size_gb": 24.0,
+    "free_gb": 275,
+    "total_gb": 994
+   },
+   "category": "user_files",
+   "expect_notify": false
+  },
+  {
+   "id": "U79",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 30,
+    "drop_gb": 9.1,
+    "free_gb": 292,
+    "total_gb": 1995,
+    "writers": [
+     {
+      "app": "ZampRelay",
+      "process": "ZampRelay",
+      "gb": 8.4
+     }
+    ]
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "U80",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 6.3,
+    "free_gb": 64,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "racket",
+      "process": "racket",
+      "gb": 5.9
+     }
+    ]
+   },
+   "category": "script",
+   "expect_notify": true
+  },
+  {
+   "id": "U81",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Music/Audio Music Apps",
+    "owner": null,
+    "grown_gb": 18.9,
+    "size_gb": 27.6,
+    "free_gb": 1185,
+    "total_gb": 1995
+   },
+   "category": "user_files",
+   "expect_notify": false
+  },
+  {
+   "id": "U82",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/CloudStorage/pCloud",
+    "owner": "pCloud",
+    "grown_gb": 17.8,
+    "size_gb": 47.1,
+    "free_gb": 1124,
+    "total_gb": 1995
+   },
+   "category": "user_files",
+   "expect_notify": false
+  },
+  {
+   "id": "U83",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 15.2,
+    "free_gb": 171,
+    "total_gb": 245,
+    "writers": [
+     {
+      "app": "位置服务",
+      "process": "locationd",
+      "gb": 14.7
+     }
+    ]
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "U84",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 20.1,
+    "free_gb": 323,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "ai.ostra.monitor",
+      "process": "ai.ostra.monitor",
+      "gb": 18.6
+     }
+    ]
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "U85",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 17.4,
+    "free_gb": 267,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "ScreenFlow",
+      "process": "ScreenFlow",
+      "gb": 16.4
+     }
+    ]
+   },
+   "category": "user_activity",
+   "expect_notify": false
+  },
+  {
+   "id": "U86",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 9.6,
+    "free_gb": 438,
+    "total_gb": 994,
+    "writers": [
+     {
+      "app": "OstraRelay",
+      "process": "OstraRelay",
+      "gb": 9.4
+     }
+    ]
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "U87",
+   "kind": "folder_growth",
+   "facts": {
+    "days": 7,
+    "path": "~/Library/IntelligencePlatform",
+    "owner": null,
+    "grown_gb": 28.4,
+    "size_gb": 35.7,
+    "free_gb": 564,
+    "total_gb": 994
+   },
+   "category": "system",
+   "expect_notify": false
+  },
+  {
+   "id": "U88",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 20.3,
+    "free_gb": 93,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "KorviRelay",
+      "process": "KorviRelay",
+      "gb": 19.5
+     }
+    ]
+   },
+   "category": "unknown",
+   "expect_notify": true
+  },
+  {
+   "id": "U89",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 10,
+    "drop_gb": 25.3,
+    "free_gb": 182,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "racket",
+      "process": "racket",
+      "gb": 24.1
+     }
+    ]
+   },
+   "category": "script",
+   "expect_notify": true
+  },
+  {
+   "id": "U90",
+   "kind": "fast_drop",
+   "facts": {
+    "minutes": 5,
+    "drop_gb": 16.6,
+    "free_gb": 254,
+    "total_gb": 494,
+    "writers": [
+     {
+      "app": "KorviMonitor",
+      "process": "KorviMonitor",
+      "gb": 15.5
+     }
+    ]
+   },
+   "category": "unknown",
+   "expect_notify": true
+  }
+ ]
+}

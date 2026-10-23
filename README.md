@@ -30,6 +30,12 @@
 - 占用排行：同一应用的多个进程合并成一项，可直接退出应用、在访达中显示
 - 诊断建议：根据当前状态给出能马上做的事
 - 持续高负载 2 分钟时发系统通知（30 分钟内不重复打扰）
+- 硬盘空间监控（齿轮 →「硬盘空间监控…」，默认关闭，规则可自定义）：
+  - 空间快速减少时提醒，并说明这段时间写入最多的程序
+  - 每天空闲时把家目录量一遍，某个文件夹持续变大时提醒，并尽量定位到最深的那一层子文件夹
+  - 智能判断（默认开启）：提醒前先用内置的 25MB 小模型判断值不值得打扰你，通知里写明原因；判断为不用打扰的也会列在「最近的判断」里，可以随时纠正
+  - 没把握时可以询问云端模型（默认关闭，只发送程序名、文件夹路径和大小）；问过的答案和你的纠正都记在本机
+  - 每次判断都保存在本机（最多 500 条，`~/Library/Application Support/LoadLens/triage-log.json`），重启后「最近的判断」仍在，也为以后用真实事件训练模型留下数据
 
 **硬盘管理**（面板顶部切到「硬盘」）
 
@@ -109,7 +115,7 @@ cd loadlens
 
 ### 主面板
 
-点菜单栏的圆环打开面板。底部固定的「AI 助手」按钮在两个页面都一样，点一下打开 / 收起 AI 助手。右上角齿轮里有：开机自动启动、持续高负载时通知、AI 模型设置、复制诊断报告、打开活动监视器、退出。
+点菜单栏的圆环打开面板。底部固定的「AI 助手」按钮在两个页面都一样，点一下打开 / 收起 AI 助手。右上角齿轮里有：开机自动启动、持续高负载时通知、硬盘空间监控、AI 模型设置、复制诊断报告、打开活动监视器、退出。
 
 面板会根据屏幕高度自适应：屏幕放不下时，顶部和底部固定、中间的卡片可以滚动，小屏幕上图表和排行会更紧凑；AI 助手的高度也不会超出屏幕，输入框始终可见。
 
@@ -141,6 +147,7 @@ cd loadlens
 | `get_space_overview` | 可清理空间总览（没分析过会自动分析） |
 | `analyze_folder` | 目录里每个子文件夹的大小、所属应用、应用是否已卸载 / 正在运行、最近修改时间 |
 | `get_history` | 最近几分钟 CPU 或硬盘读写的趋势 |
+| `get_folder_growth` | 最近哪些文件夹在变大（需要开启「文件夹持续变大」监控） |
 | `get_system_info` | 型号、芯片、macOS 版本、运行时间等 |
 
 不支持工具调用的模型会自动退回普通对话。使用 Anthropic 官方接口和 Claude Opus / Sonnet 5.5 等模型时，会自动开启服务端 `fallbacks`：请求被安全策略拒绝时，由服务端换用其他模型重试。
@@ -150,7 +157,7 @@ cd loadlens
 - **不需要** sudo、辅助功能或屏幕录制权限；不读取任何文件的内容，只读文件大小。
 - **只有 AI 功能会联网**，而且只连你选择的服务。每次提问会发送当前的 CPU、内存、温度、占用最高的应用名和本机建议；AI 调用工具时会额外发送查到的结果（应用名、进程名、文件夹名和大小）。AI 助手顶部「AI 实时读取」→「详情」可以看到完整内容。对话只保存在内存里，退出即清空。
 - **API Key** 存在 macOS 钥匙串，不写入任何文件。为了重新编译后不再反复弹授权框，Key 以「本机任何应用都可读取」的方式保存，代价是同一用户下运行的其他程序也能读到（安全性接近配置文件）。
-- **可选的系统授权**：统计「下载」时系统可能询问一次；废纸篓、iPhone 备份受隐私保护，需要在「系统设置 → 隐私与安全性 → 完全磁盘访问权限」里允许负载侦探才能统计；通知需要在首次开启时允许。
+- **可选的系统授权**：统计「下载」时系统可能询问一次；废纸篓、iPhone 备份受隐私保护，需要在「系统设置 → 隐私与安全性 → 完全磁盘访问权限」里允许负载侦探才能统计；通知需要在首次开启时允许。开启「文件夹持续变大」后，第一次扫描时系统可能询问能否访问桌面、文稿等文件夹，不允许的会跳过。
 
 ## 资源占用
 
@@ -178,6 +185,20 @@ open build/LoadLens.app                                 # 直接运行（不安�
 | --- | --- |
 | `--diagnose` | 在终端打印一次完整体检 |
 | `--tool-test <工具名> '<JSON 参数>'` | 用实时数据运行一个 AI 工具，打印结果 |
+| `--disk-watch [秒数] [GB] [分钟]` | 测试硬盘空间监控：用临时规则运行，有提醒时直接打印（不保存设置、不发通知） |
+| `--notify-test` | 打印通知权限状态，并发一条测试通知 |
+| `--llm-test <模型.gguf>` | 加载本地模型，跑三个实验：KV 缓存前缀复用、读题与生成的速度、采样温度的影响 |
+| `--triage-eval <模型.gguf> [考题.json]` | 本地生成式模型答分诊考题（`--direct` 直接判断，默认判类别） |
+| `--embed-export` / `--embed-text` | 导出嵌入向量（训练分类器用） |
+| `--probe-eval <模型.gguf> <分类器.json> [考题.json]` | 嵌入 + 分类器打分，并列出不同置信度门槛下的效果 |
+| `--hybrid-eval <模型.gguf> <分类器.json> <考题.json>` | 五层分诊决策的模拟（模拟云端，不联网） |
+| `--cloud-eval <考题.json>` | 把考题发给已配置的云端模型打分（会联网、产生少量费用） |
+| `--triage-check` | 用应用内置的模型判断几个典型事件，检查打包和加载是否正常 |
+| `--triage-log [导出.jsonl]` | 统计已保存的判断记录；给出路径时导出为每行一条 JSON，用作训练数据的起点 |
+| `--triage-log-selftest` | 自测判断记录的保存与纠正（需设置 `LOADLENS_SETTINGS_SUITE`，不碰真实记录） |
+| `--memory-selftest` | 自测「纠正后重启仍然记得、且优先于云端答案」 |
+| `--folder-scan` | 把家目录量一遍，打印用时和最大的文件夹（不保存） |
+| `--folder-growth-selftest` | 在临时目录里自测「文件夹持续变大」的定位和去重逻辑，通过时打印 PASS |
 | `--preview-window [秒]` | 把面板放在普通窗口里显示，便于截图 |
 | `--render-preview <路径>` | 把面板离屏渲染成 PNG |
 | `--ai-preview` | 启动后直接打开 AI 独立窗口并分析一次 |
@@ -188,6 +209,7 @@ open build/LoadLens.app                                 # 直接运行（不安�
 | 环境变量 | 作用 |
 | --- | --- |
 | `LOADLENS_AI_MOCK=1` | AI 返回固定的演示内容，不联网 |
+| `LOADLENS_DISKWATCH_DEBUG=1` | 硬盘空间监控每次检查都打印剩余空间、减少量和当前规则 |
 | `LOADLENS_AI_KEY=<key>` | 临时给当前服务指定 Key |
 | `LOADLENS_SETTINGS_SUITE=<名字>` | 使用独立的设置和钥匙串条目，测试时不影响真实配置 |
 | `LOADLENS_DOCK_SIDE=left` | 强制 AI 助手在面板左侧展开 |
@@ -229,6 +251,9 @@ Sources/
   Disk.swift                 磁盘容量、读写速度、健康状态
   SpaceScanner.swift         可清理空间分析
   Diagnoser.swift            诊断规则与建议
+  DiskWatch.swift            空间快速减少提醒
+  FolderGrowth.swift         每日文件夹大小记录与持续变大提醒
+  DiskWatchView.swift        「硬盘空间监控」设置窗口
   Views.swift                主面板界面
   DiskViews.swift            「硬盘」页界面
   Theme.swift                配色、卡片与通用控件
@@ -240,15 +265,23 @@ Sources/
   AIProviders.swift          预置模型服务与配置存储
   AITools.swift              AI 可调用的只读工具
   LLMClient.swift            流式客户端与工具调用（OpenAI 兼容 / Anthropic）
+  LocalModel.swift           内嵌 llama.cpp 的本地模型推理（KV 缓存复用、采样）
+  Triage.swift               硬盘事件分诊：类别定义与提醒规则、提示词、语法约束
+  DecisionModel.swift        嵌入模型 + 线性分类器（固定答案、带置信度）
+  HybridTriage.swift         五层分诊决策：硬规则、记忆、本地模型、云端、兜底
+  TriageService.swift        把提醒接入分诊：设置、最近的判断、纠正；模型在子进程里运行
   MarkdownText.swift         AI 回复的 Markdown 渲染
   Keychain.swift             API Key 存取
   LoginItem.swift            开机自启
   Notifier.swift             系统通知
   CLI.swift                  终端体检与开发用预览
-Resources/                   图标
+Resources/                   图标；triage/ 里是内置的分诊模型、分类器和第三方许可声明
 docs/                        界面截图与宣传素材
+train/                       本地分诊模型的数据生成、训练与评测（见 train/README.md）
+eval/                        分诊考题（模拟考与冻结的测试集）
 tools/
   setup-signing.sh           创建本机自签名证书（可选）
+  fetch-llama.sh             下载固定版本的 llama.cpp 预编译框架到 vendor/（build.sh 自动调用）
   IconGen.swift              图标生成器
 build.sh / install.sh / uninstall.sh
 AGENTS.md                    给 AI 编程工具看的安装与开发说明

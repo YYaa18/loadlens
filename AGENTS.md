@@ -6,7 +6,8 @@ The user-facing documentation is [README.md](README.md) (Chinese). Reply to the 
 ## What this is
 
 **负载侦探 LoadLens** is a native macOS menu bar app (Swift + SwiftUI, no Xcode project, no
-package dependencies). It shows CPU / memory / disk usage in plain language and has an AI assistant
+package manager; the only third-party code is a pinned, prebuilt llama.cpp framework that
+`tools/fetch-llama.sh` downloads into `vendor/`, checksum-verified, for the on-device model). It shows CPU / memory / disk usage in plain language and has an AI assistant
 that can call read-only data tools. The app's UI is in Chinese.
 
 - Bundle ID: `local.loadlens` · executable: `LoadLens` · installed as `~/Applications/负载侦探.app`
@@ -114,6 +115,9 @@ open build/LoadLens.app                      # run without installing
 ./install.sh                                 # build + install + relaunch
 ```
 
+`build.sh` first runs `tools/fetch-llama.sh` (network needed once; `vendor/` is git-ignored). To upgrade
+llama.cpp, change `VERSION` and `SHA256` there together and rerun `--llm-test`, since its C API changes often.
+
 There is no Xcode project and no SwiftPM package: `build.sh` passes an explicit list of source files
 to `swiftc`. **When you add a new `.swift` file, add it to the list in `build.sh`**, or the build fails
 with "cannot find … in scope".
@@ -138,6 +142,13 @@ See the README's "开发用命令行参数" section for the full list.
 - UI text is Simplified Chinese, written for non-technical users. Code comments are English.
 - Stay permission-free: no sudo, no Accessibility / Screen Recording, never read file contents
   (sizes and metadata only).
+- Disk alerts go through `TriageService` before notifying. The bundled model
+  (`Resources/triage/`, bge-small-zh 8-bit + `probe.json`) runs in a short-lived helper process
+  (`LoadLens --triage-judge`), never inside the menu bar app: initialising llama.cpp alone costs
+  ~94MB that is not returned while the process lives. Keep it that way. `probe.json` only fits that
+  exact model file; retrain it (see `train/README.md`) if the model changes.
+- Asking the cloud model is opt-in (off by default) and sends only event descriptions
+  (process / folder names and sizes). User corrections in the answer memory always win.
 - AI tools in `Sources/AITools.swift` must stay **read-only**. Never add tools that delete files,
   kill processes or change settings.
 - Keep it light: the app idles at ~0.2% CPU (panel closed) and ~0.7% (panel open). Avoid SwiftUI

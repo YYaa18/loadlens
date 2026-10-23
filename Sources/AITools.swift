@@ -64,6 +64,15 @@ enum AITools {
                     "required": ["metric"],
                     "additionalProperties": false
                  ]),
+        ToolSpec(name: "get_folder_growth",
+                 description: "家目录里哪些文件夹最近在变大：每天扫描一次记下的各文件夹大小，和几天前对比的增长量（已定位到最能解释增长的子文件夹）、所属应用，以及家目录下各顶层文件夹大小。用于回答“硬盘空间被谁慢慢吃掉了”“这周哪里涨了”。",
+                 parameters: [
+                    "type": "object",
+                    "properties": [
+                        "days": ["type": "integer", "description": "和几天前对比，默认用设置里的天数，最多 45"]
+                    ],
+                    "additionalProperties": false
+                 ]),
         ToolSpec(name: "get_system_info",
                  description: "这台 Mac 的基本信息：型号、芯片、核数、内存、macOS 版本、已运行时间、温度状态、负载。",
                  parameters: ["type": "object", "properties": [:], "additionalProperties": false])
@@ -83,6 +92,7 @@ enum AITools {
             if let target = args["target"] as? String { return "查看「\(targetTitle(target))」明细" }
             return "查看目录「\((args["path"] as? String ?? "").replacingOccurrences(of: NSHomeDirectory(), with: "~"))」"
         case "get_history": return (args["metric"] as? String) == "disk" ? "查看硬盘读写趋势" : "查看 CPU 趋势"
+        case "get_folder_growth": return "查看最近变大的文件夹"
         case "get_system_info": return "查看系统信息"
         default: return "查询 \(name)"
         }
@@ -104,6 +114,9 @@ enum AITools {
         case "get_space_overview": return await spaceOverview()
         case "analyze_folder": return await analyzeFolder(args)
         case "get_history": return await history(args)
+        case "get_folder_growth":
+            let days = intArg(args["days"])
+            return json(await MainActor.run { FolderGrowthTracker.shared.toolSummary(days: days) })
         case "get_system_info": return await systemInfo()
         default: return json(["error": "未知工具 \(name)"])
         }
