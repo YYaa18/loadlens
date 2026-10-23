@@ -715,3 +715,71 @@ func runMemorySelfTest() -> Bool {
     print(passed ? "PASS" : "FAIL")
     return passed
 }
+
+/// `--triage-log [out.jsonl]`: summarises the saved judgements; with a path, also writes them one
+/// JSON object per line (raw event, decision, source, confidence, the user's correction) as the
+/// starting point for training on real events.
+func runTriageLog(output: String?) -> Bool {
+    let records = TriageService.shared.savedRecords
+    let notified = records.filter(\.notified).count
+    let corrected = records.filter { $0.corrected != nil }.count
+    print("已保存 \(records.count) 条判断：提醒 \(notified) · 未打扰 \(records.count - notified) · 被纠正 \(corrected)")
+    var bySource: [String: Int] = [:]
+    for record in records { bySource[record.source?.rawValue ?? "未启用", default: 0] += 1 }
+    print("来源：" + bySource.sorted { $0.value > $1.value }.map { "\($0.key) \($0.value)" }.joined(separator: " · "))
+
+    guard let output else { return true }
+    let formatter = ISO8601DateFormatter()
+    var lines: [String] = []
+    for record in records {
+        guard let facts = record.facts, let factsData = try? JSONEncoder().encode(facts),
+              let factsObject = try? JSONSerialization.jsonObject(with: factsData) else { continue }
+        var row: [String: Any] = ["date": formatter.string(from: record.date),
+                                  "kind": facts.path == nil ? "fast_drop" : "folder_growth",
+                                  "facts": factsObject, "notified": record.notified]
+        if let category = record.category { row["decided_category"] = category.rawValue }
+        if let source = record.source { row["source"] = source.rawValue }
+        if let confidence = record.confidence { row["confidence"] = confidence }
+        if let corrected = record.corrected { row["user_says_notify"] = corrected }
+        guard let data = try? JSONSerialization.data(withJSONObject: row, options: [.sortedKeys, .withoutEscapingSlashes]) else { continue }
+        lines.append(String(decoding: data, as: UTF8.self))
+    }
+    do {
+        try (lines.joined(separator: "\n") + (lines.isEmpty ? "" : "\n")).write(toFile: output, atomically: true, encoding: .utf8)
+        print("导出 \(lines.count) 条 → \(output)")
+        return true
+    } catch {
+        print("写入失败：\(error.localizedDescription)")
+        return false
+    }
+}
+
+/// `--triage-log-selftest` (run with LOADLENS_SETTINGS_SUITE set): a judged event and its
+/// correction must be on disk, raw facts included, as a restart would read them.
+func runTriageLogSelfTest() -> Bool {
+    guard ProcessInfo.processInfo.environment["LOADLENS_SETTINGS_SUITE"] != nil else {
+        print("请设置 LOADLENS_SETTINGS_SUITE，以免碰到真实记录"); return false
+    }
+    let logURL = TriageLog.defaultURL
+    defer { try? FileManager.default.removeItem(at: logURL); try? FileManager.default.removeItem(at: AnswerMemory.defaultURL) }
+    let before = TriageService.shared.savedRecords.count
+
+    // A quiet event (a browser download), so no real notification is shown.
+    let facts = DiskEventFacts(minutes: 10, drop_gb: 5, writers: [.init(app: "Firefox", process: "firefox", gb: 5)],
+                               free_gb: 200, total_gb: 494)
+    TriageService.shared.handle(facts: facts, title: "测试", body: "自测事件")
+    let deadline = Date().addingTimeInterval(20)
+    while TriageService.shared.records.count == before, Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
+    guard let record = TriageService.shared.records.first else { print("FAIL: 没有生成记录"); return false }
+    TriageService.shared.correct(record.id, notify: true)
+    RunLoop.main.run(until: Date().addingTimeInterval(0.5))
+
+    // "Restart": read the file again.
+    let saved = TriageLog(url: logURL).load()
+    let reloaded = saved.first { $0.id == record.id }
+    print("判断：\(record.notified ? "提醒" : "未打扰")（\(record.explanation)）")
+    print("重新读取：\(reloaded == nil ? "找不到" : "找到")，原始数据 \(reloaded?.facts?.writers?.first?.process ?? "无")，纠正 \(reloaded?.corrected.map { $0 ? "以后提醒" : "以后不提醒" } ?? "无")")
+    let passed = !record.notified && reloaded?.facts?.writers?.first?.process == "firefox" && reloaded?.corrected == true
+    print(passed ? "PASS" : "FAIL")
+    return passed
+}

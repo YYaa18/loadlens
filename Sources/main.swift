@@ -93,6 +93,17 @@ if let index = CommandLine.arguments.firstIndex(of: "--embed-text"), CommandLine
                       texts: Array(args[(index + 3)...])) ? 0 : 1)
 }
 
+if let index = CommandLine.arguments.firstIndex(of: "--triage-log") {
+    let args = CommandLine.arguments
+    let ok = MainActor.assumeIsolated { runTriageLog(output: args.count > index + 1 ? args[index + 1] : nil) }
+    exit(ok ? 0 : 1)
+}
+
+if CommandLine.arguments.contains("--triage-log-selftest") {
+    let ok = MainActor.assumeIsolated { runTriageLogSelfTest() }
+    exit(ok ? 0 : 1)
+}
+
 if CommandLine.arguments.contains("--memory-selftest") {
     exit(runMemorySelfTest() ? 0 : 1)
 }
