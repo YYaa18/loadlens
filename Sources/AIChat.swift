@@ -20,6 +20,8 @@ struct ChatMessage: Identifiable {
     var display: String? = nil
     /// Lookups the assistant ran while answering.
     var steps: [ToolStep] = []
+    /// How many personal names were hidden from the cloud so far in this conversation.
+    var hiddenCount = 0
     let date = Date()
 
     var shownText: String { display ?? text }
@@ -37,6 +39,17 @@ final class AIChat: ObservableObject {
     @Published private(set) var lastContext = ""
     /// The provider/model that answered most recently, shown under replies.
     @Published private(set) var lastModelLabel = ""
+    /// Hide personal names (files, folders, account) before anything is sent; on by default.
+    @Published var redactEnabled: Bool = AIChat.store.object(forKey: "aiRedact") as? Bool ?? true {
+        didSet { AIChat.store.set(redactEnabled, forKey: "aiRedact") }
+    }
+
+    private static let store: UserDefaults =
+        ProcessInfo.processInfo.environment["LOADLENS_SETTINGS_SUITE"]
+            .flatMap { UserDefaults(suiteName: "local.loadlens.\($0)") } ?? .standard
+    /// One per conversation, so a name keeps the same code across turns.
+    private var redactor = Redactor()
+    private var restorer = StreamRestorer()
 
     let config = AIConfigStore.shared
     private let client = LLMClient.shared
@@ -57,6 +70,15 @@ final class AIChat: ObservableObject {
     5. 你不能删除文件或结束进程，只能告诉用户怎么做；不要建议危险命令、安装来源不明的软件或关闭系统安全功能；
     6. 普通问题 250 字以内；做明细分析时可以更长，按占用从大到小列出要点；
     7. 可以用简短的 Markdown：**加粗**关键结论，用 "- " 或 "1. " 列出要点，不要用表格和标题。
+    """
+
+    /// Without this the model avoids the codes it cannot read and tells the user to look names up
+    /// themselves; told that codes are restored, it uses them and the user sees real names.
+    private static let redactionNote = """
+
+    8. 为保护隐私，用户自己的文件名、文件夹名、用户名、电脑名等已替换成【文件1.dmg】【文件夹2】这样的代号。\
+    提到它们时请原样写出代号（包括【】），界面会自动换成真实名字显示给用户，所以不要回避，也不要让用户自己去查名字；\
+    需要进一步查看某个打了码的文件夹时，也直接把代号写进工具参数里。
     """
 
     private init() {}
@@ -102,8 +124,9 @@ final class AIChat: ObservableObject {
              display: "帮我看看硬盘空间")
     }
 
+    /// Exactly what goes to the cloud with every question (after hiding personal names).
     func contextPreview() -> String {
-        buildContext()
+        redactEnabled ? redactor.redactText(buildContext()) : buildContext()
     }
 
     func send(_ raw: String, display: String? = nil) {
@@ -132,10 +155,15 @@ final class AIChat: ObservableObject {
         // Last few turns, starting from a user message (required by some APIs).
         var history = Array(messages.filter { !$0.text.isEmpty }.suffix(10))
         while history.first?.role == .assistant { history.removeFirst() }
+        let protect = redactEnabled
+        let redactor = self.redactor
+        restorer = StreamRestorer()
         let apiMessages = history.map {
-            LLMMessage(role: $0.role == .user ? "user" : "assistant", content: $0.text)
+            LLMMessage(role: $0.role == .user ? "user" : "assistant",
+                       content: protect ? redactor.redactText($0.text) : $0.text)
         }
-        let system = systemPrompt + "\n\n本机快照：\n" + context
+        let system = systemPrompt + (protect ? Self.redactionNote : "")
+            + "\n\n本机快照：\n" + (protect ? redactor.redactText(context) : context)
 
         task = Task { [weak self] in
             guard let self else { return }
@@ -144,7 +172,13 @@ final class AIChat: ObservableObject {
                                           messages: apiMessages,
                                           endpoint: endpoint,
                                           tools: AITools.specs,
-                                          execute: { name, arguments in await AITools.execute(name, arguments) },
+                                          execute: { name, arguments in
+                    guard protect else { return await AITools.execute(name, arguments) }
+                    // The model may refer to coded names; run the tool on the real ones, hide them again in the result.
+                    let real = redactor.restoreArguments(arguments)
+                    let result = await AITools.execute(name, real)
+                    return redactor.redactToolResult(name: name, arguments: real, result: result)
+                },
                                           onEvent: { event in
                     DispatchQueue.main.async { [weak self] in
                         self?.handle(event)
@@ -178,6 +212,8 @@ final class AIChat: ObservableObject {
     func clear() {
         cancel()
         messages = []
+        redactor = Redactor()
+        restorer = StreamRestorer()
         dismissError()
         lastContext = ""
     }
@@ -187,8 +223,9 @@ final class AIChat: ObservableObject {
     private func handle(_ event: LLMClient.AgentEvent) {
         switch event {
         case .text(let delta):
-            appendDelta(delta)
-        case .toolStarted(let id, let name, let arguments):
+            appendDelta(redactEnabled ? restorer.push(delta, with: redactor) : delta)
+        case .toolStarted(let id, let name, let rawArguments):
+            let arguments = redactEnabled ? redactor.restoreArguments(rawArguments) : rawArguments
             flushPending()
             guard let index = currentIndex else { return }
             // Text written before a lookup ("我先查一下") gets separated from the final answer.
@@ -230,7 +267,9 @@ final class AIChat: ObservableObject {
     }
 
     private func finishStreaming() {
+        pending += restorer.flush(with: redactor)
         flushPending()
+        if redactEnabled, let index = currentIndex { messages[index].hiddenCount = redactor.hiddenCount }
         if let id = currentAssistantID,
            let index = messages.firstIndex(where: { $0.id == id }),
            messages[index].text.isEmpty {

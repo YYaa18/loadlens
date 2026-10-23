@@ -149,6 +149,10 @@ See the README's "开发用命令行参数" section for the full list.
   exact model file; retrain it (see `train/README.md`) if the model changes.
 - Asking the cloud model is opt-in (off by default) and sends only event descriptions
   (process / folder names and sizes). User corrections in the answer memory always win.
+- Everything sent to a cloud model (chat snapshot, messages, tool results, cloud triage) goes through
+  `Redactor` when the user's privacy switch is on (default): personal file/folder names, account and
+  computer names, emails, phones and IPs become codes such as 【文件1.dmg】 and are restored locally in
+  the reply. New tools that return paths or names from the user's own folders must keep working with it.
 - AI tools in `Sources/AITools.swift` must stay **read-only**. Never add tools that delete files,
   kill processes or change settings.
 - Keep it light: the app idles at ~0.2% CPU (panel closed) and ~0.7% (panel open). Avoid SwiftUI

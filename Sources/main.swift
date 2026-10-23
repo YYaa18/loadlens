@@ -104,6 +104,15 @@ if CommandLine.arguments.contains("--triage-log-selftest") {
     exit(ok ? 0 : 1)
 }
 
+if CommandLine.arguments.contains("--redact-demo") {
+    let ok = MainActor.assumeIsolated { () -> Bool in
+        _ = NSApplication.shared
+        Monitor.shared.start()
+        return runRedactDemo()
+    }
+    exit(ok ? 0 : 1)
+}
+
 if CommandLine.arguments.contains("--memory-selftest") {
     exit(runMemorySelfTest() ? 0 : 1)
 }

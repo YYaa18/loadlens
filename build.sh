@@ -32,6 +32,7 @@ xcrun swiftc -O -swift-version 5 \
     "$ROOT/Sources/Triage.swift" \
     "$ROOT/Sources/DecisionModel.swift" \
     "$ROOT/Sources/HybridTriage.swift" \
+    "$ROOT/Sources/Redactor.swift" \
     "$ROOT/Sources/TriageService.swift" \
     "$ROOT/Sources/AISettingsView.swift" \
     "$ROOT/Sources/Theme.swift" \

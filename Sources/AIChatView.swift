@@ -204,6 +204,18 @@ struct AIChatView: View {
                 .font(.system(size: 10.5))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Toggle(isOn: $chat.redactEnabled) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("发送前隐去个人信息")
+                        .font(.system(size: 11.5, weight: .medium))
+                    Text("你的用户名、电脑名，以及桌面、文稿、下载等文件夹里的文件名，会先换成【文件1】这样的代号；回答里再换回真名给你看。")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .toggleStyle(.switch)
+            .controlSize(.mini)
             ScrollView {
                 Text(chat.contextPreview())
                     .font(.system(size: 10.5, design: .monospaced))
@@ -478,6 +490,11 @@ private struct AssistantMessage: View {
                     MarkdownText(text: message.text)
                 }
 
+                if !isStreaming && message.hiddenCount > 0 {
+                    Label("发送前隐去了 \(message.hiddenCount) 处个人信息", systemImage: "lock.shield")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
                 if !isStreaming && !message.text.isEmpty {
                     HStack(spacing: 2) {
                         smallAction(copied ? "checkmark" : "doc.on.doc",
